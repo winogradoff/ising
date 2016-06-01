@@ -2,9 +2,9 @@
 #define WIDGET_H
 
 #include <QWidget>
-#include "grid.h"
 #include <QtConcurrent/QtConcurrent>
 #include <QGraphicsScene>
+#include "grid.h"
 
 #define PLOT_SIZE 100
 

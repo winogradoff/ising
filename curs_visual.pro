@@ -1,15 +1,17 @@
-QT += core gui widgets printsupport concurrent
+QT += core gui opengl widgets printsupport concurrent
 
 TARGET = curs_visual
 TEMPLATE = app
 
-SOURCES += main.cpp\
-    widget.cpp \
-    qcustomplot.cpp
-
 HEADERS += widget.h \
     grid.h \
-    qcustomplot.h
+    qcustomplot.h \
+    oglwidget.h
+
+SOURCES += main.cpp\
+    widget.cpp \
+    qcustomplot.cpp \
+    oglwidget.cpp
 
 FORMS += widget.ui
 
@@ -42,7 +44,7 @@ QMAKE_LIBDIR += $$CUDA_DIR/lib/$$SYSTEM_NAME
 CUDA_LIBS = cuda cudart
 CUDA_INC = $$join(INCLUDEPATH,'" -I"','-I"','"')
 NVCC_LIBS = -lcuda -lcudart
-LIBS += cuda.lib cudart.lib
+LIBS += cuda.lib cudart.lib opengl32.lib glu32.lib
 
 MSVCRT_LINK_FLAG_DEBUG = "/MDd"
 MSVCRT_LINK_FLAG_RELEASE = "/MD"

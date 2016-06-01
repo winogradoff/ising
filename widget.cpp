@@ -37,6 +37,7 @@ Widget::Widget(QWidget *parent) : QWidget(parent), ui(new Ui::Widget)
 
 Widget::~Widget()
 {
+    delete ui;
     this->watcher.waitForFinished();
 }
 
@@ -187,6 +188,8 @@ void Widget::newGrid()
 
     cudaInitGrid(&(this->grid));
     this->grid.tempMatrix = new BYTE[this->grid.xSize * this->grid.ySize * this->grid.zSize];
+
+    ui->openGLWidget->setGrid(this->grid);
 }
 
 void Widget::run()
@@ -207,13 +210,20 @@ void Widget::check()
     if(this->state == 1)
     {
         this->updateImage();
-//        this->updatePlots();
+        this->updatePlots();
         this->run();
     }
 }
 
 void Widget::updateImage()
 {
+    // copy to temp
+    cudaUpdateTempMatrix(&(this->grid));
+
+    // Update OpenGL widget
+    ui->openGLWidget->update();
+
+    // Update QImage widget
     int imageWidth = this->grid.xSize;
     int imageHeight = this->grid.ySize;
 
@@ -236,9 +246,6 @@ void Widget::updateImage()
         height = widgetHeight;
         width = height * imageRatio;
     }
-
-    // copy to temp
-    cudaUpdateTempMatrix(&(this->grid));
 
     QImage image = QImage(this->grid.xSize, this->grid.ySize, QImage::Format_RGB16);
     for (int i = 0; i < this->grid.xSize; i++) {
