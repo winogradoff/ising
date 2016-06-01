@@ -185,7 +185,7 @@ void OGLWidget::drawFigure()
             GLfloat y = this->vertices[i + 1] - 0.5f * size;
             GLfloat z = this->vertices[i + 2] - 0.5f * size;
 
-            switch(this->grid.tempMatrix[i / 3])
+            switch(this->grid.hostMatrix[i / 3])
             {
                 case 0: glColor3f(0.0f, 1.0f, 0.0f); break;
                 case 2: glColor3f(1.0f, 0.0f, 0.0f); break;

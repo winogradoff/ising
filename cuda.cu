@@ -34,8 +34,7 @@ void kernelInitRandomStates(curandState *randomStates, int xSize, int ySize, int
 
 __global__
 void kernelInitGrid(
-    BYTE *data1, BYTE *data2,
-    curandState *randomStates,
+    BYTE *data, curandState *randomStates,
     int xSize, int ySize, int zSize
 )
 {
@@ -55,9 +54,7 @@ void kernelInitGrid(
             for (int k = idz; k < zSize; k += offsetz)
             {
                 BYTE value = curand_uniform(rndState) < 0.5 ? 0 : 2;
-                int index = getIndex(xSize, ySize, zSize, i, j, k);
-                data1[index] = value;
-                data2[index] = value;
+                data[getIndex(xSize, ySize, zSize, i, j, k)] = value;
             }
         }
     }
@@ -77,7 +74,7 @@ double gridInteractionPotential(double interactionEnergy, double r)
 
 __global__
 void kernelAlgorithm(
-    BYTE *input, BYTE *output, curandState *randomStates,
+    BYTE *data, curandState *randomStates,
     DimensionEnum dimension, int xSize, int ySize, int zSize,
     int interactionEnergy, double externalField, int interactionRadius, double temperature,
     bool even
@@ -130,7 +127,7 @@ void kernelAlgorithm(
                             double dist = gridDistantion(i, j, k, xx, yy, zz);
 
                             if (dist <= interactionRadius) {
-                                gridSpinEnergy += (input[getIndex(xSize, ySize, zSize, xx, yy, zz)] - 1)
+                                gridSpinEnergy += (data[getIndex(xSize, ySize, zSize, xx, yy, zz)] - 1)
                                                   * gridInteractionPotential(interactionEnergy, dist);
                             }
                         }
@@ -144,11 +141,11 @@ void kernelAlgorithm(
 
                 if (curand_uniform(rndState) > probability)
                 {
-                    output[index] = 0;
+                    data[index] = 0;
                 }
                 else
                 {
-                    output[index] = 2;
+                    data[index] = 2;
                 }
             }
         }
@@ -163,42 +160,35 @@ void cudaInitGrid(Grid *g)
     cudaMalloc((void **)& (g->randomStates), sizeof(curandState) * x * y * z);
 
     int dataSize = g->xSize * g->ySize * g->zSize;
-    cudaMalloc((void **)& (g->prevMatrix), sizeof(BYTE) * dataSize);
-    cudaMalloc((void **)& (g->currMatrix), sizeof(BYTE) * dataSize);
+    cudaMalloc((void **)& (g->deviceMatrix), sizeof(BYTE) * dataSize);
     kernelInitRandomStates<<<blocks, threads>>>(g->randomStates, g->xSize, g->ySize, g->zSize);
-    kernelInitGrid<<<blocks, threads>>>(g->prevMatrix, g->currMatrix, g->randomStates, g->xSize, g->ySize, g->zSize);
+    kernelInitGrid<<<blocks, threads>>>(g->deviceMatrix, g->randomStates, g->xSize, g->ySize, g->zSize);
 }
 
 void cudaFreeGrid(Grid *g)
 {
     if (g->randomStates != NULL) cudaFree(g->randomStates);
-    if (g->prevMatrix != NULL) cudaFree(g->prevMatrix);
-    if (g->currMatrix != NULL) cudaFree(g->currMatrix);
+    if (g->deviceMatrix != NULL) cudaFree(g->deviceMatrix);
 }
 
 void cudaUpdateTempMatrix(Grid *g)
 {
     int dataSize = g->xSize * g->ySize * g->zSize;
-    cudaMemcpy(g->tempMatrix, g->currMatrix, sizeof(BYTE) * dataSize, cudaMemcpyDeviceToHost);
+    cudaMemcpy(g->hostMatrix, g->deviceMatrix, sizeof(BYTE) * dataSize, cudaMemcpyDeviceToHost);
 }
 
 void cudaAlgorithmStep(Grid *g, int algorithmSteps)
 {
     for (int i = 0; i < algorithmSteps; i++)
     {
-//        // swap
-//        BYTE *temp = g->prevMatrix;
-//        g->prevMatrix = g->currMatrix;
-//        g->currMatrix = temp;
-
         kernelAlgorithm<<<blocks, threads>>>(
-            g->currMatrix, g->currMatrix, g->randomStates,
+            g->deviceMatrix, g->randomStates,
             g->dimension, g->xSize, g->ySize, g->zSize,
             g->interactionEnergy, g->externalField, g->interactionRadius, g->temperature, false
         );
 
         kernelAlgorithm<<<blocks, threads>>>(
-            g->currMatrix, g->currMatrix, g->randomStates,
+            g->deviceMatrix, g->randomStates,
             g->dimension, g->xSize, g->ySize, g->zSize,
             g->interactionEnergy, g->externalField, g->interactionRadius, g->temperature, true
         );

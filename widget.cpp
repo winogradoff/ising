@@ -13,9 +13,8 @@ Widget::Widget(QWidget *parent) : QWidget(parent), ui(new Ui::Widget)
     connect(&(this->watcher), &QFutureWatcher<void>::finished, this, &Widget::check);
 
     this->grid.randomStates = NULL;
-    this->grid.tempMatrix = NULL;
-    this->grid.prevMatrix = NULL;
-    this->grid.currMatrix = NULL;
+    this->grid.hostMatrix = NULL;
+    this->grid.deviceMatrix = NULL;
 
     this->state = 0;
     this->scene = NULL;
@@ -192,10 +191,10 @@ void Widget::newGrid()
     }
 
     cudaFreeGrid(&(this->grid));
-    if (this->grid.tempMatrix != NULL) delete[] this->grid.tempMatrix;
+    if (this->grid.hostMatrix != NULL) delete[] this->grid.hostMatrix;
 
     cudaInitGrid(&(this->grid));
-    this->grid.tempMatrix = new BYTE[this->grid.xSize * this->grid.ySize * this->grid.zSize];
+    this->grid.hostMatrix = new BYTE[this->grid.xSize * this->grid.ySize * this->grid.zSize];
 
     ui->openGLWidget->setGrid(this->grid);
 }
@@ -260,7 +259,7 @@ void Widget::updateImage()
 //        for (int j = 0; j < this->grid.ySize; j++) {
 ////            int index = i + this->grid.ySize * j + this->grid.ySize * this->grid.zSize * this->coordZ;
 //            int index = (i * this->grid.ySize + j) * this->grid.zSize + this->coordZ;
-//            int value = this->grid.tempMatrix[index];
+//            int value = this->grid.hostMatrix[index];
 //            int r = this->colors[value][0];
 //            int g = this->colors[value][1];
 //            int b = this->colors[value][2];
