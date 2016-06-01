@@ -31,6 +31,14 @@ Widget::Widget(QWidget *parent) : QWidget(parent), ui(new Ui::Widget)
     this->colors[2][1] = 0;
     this->colors[2][2] = 0;
 
+    ui->coordZLabel->setVisible(false);
+    ui->coordZ->setVisible(false);
+    ui->graphicsView->setVisible(false);
+    ui->customPlot1->setVisible(false);
+    ui->customPlot2->setVisible(false);
+    ui->customPlot3->setVisible(false);
+    ui->customPlot4->setVisible(false);
+
     this->updateForm();
     this->on_newButton_clicked();
 }
@@ -113,8 +121,8 @@ void Widget::updateForm()
             ui->gridYSize->setVisible(false);
             ui->gridZLabel->setVisible(false);
             ui->gridZSize->setVisible(false);
-            ui->coordZLabel->setVisible(false);
-            ui->coordZ->setVisible(false);
+//            ui->coordZLabel->setVisible(false);
+//            ui->coordZ->setVisible(false);
         break;
 
         case DIM_2:
@@ -124,8 +132,8 @@ void Widget::updateForm()
             ui->gridYSize->setVisible(true);
             ui->gridZLabel->setVisible(false);
             ui->gridZSize->setVisible(false);
-            ui->coordZLabel->setVisible(false);
-            ui->coordZ->setVisible(false);
+//            ui->coordZLabel->setVisible(false);
+//            ui->coordZ->setVisible(false);
         break;
 
         case DIM_3:
@@ -135,21 +143,21 @@ void Widget::updateForm()
             ui->gridYSize->setVisible(true);
             ui->gridZLabel->setVisible(true);
             ui->gridZSize->setVisible(true);
-            ui->coordZLabel->setVisible(true);
-            ui->coordZ->setVisible(true);
+//            ui->coordZLabel->setVisible(true);
+//            ui->coordZ->setVisible(true);
         break;
     }
 
-    int newCoordZ = ui->coordZ->value();
+//    int newCoordZ = ui->coordZ->value();
 
-    if (newCoordZ != this->coordZ)
-    {
-        if (newCoordZ >= this->grid.zSize) {
-            newCoordZ = this->grid.zSize - 1;
-            ui->coordZ->setValue(newCoordZ);
-        }
-        this->coordZ = newCoordZ;
-    }
+//    if (newCoordZ != this->coordZ)
+//    {
+//        if (newCoordZ >= this->grid.zSize) {
+//            newCoordZ = this->grid.zSize - 1;
+//            ui->coordZ->setValue(newCoordZ);
+//        }
+//        this->coordZ = newCoordZ;
+//    }
 }
 
 void Widget::newGrid()
@@ -223,54 +231,54 @@ void Widget::updateImage()
     // Update OpenGL widget
     ui->openGLWidget->update();
 
-    // Update QImage widget
-    int imageWidth = this->grid.xSize;
-    int imageHeight = this->grid.ySize;
+//    // Update QImage widget
+//    int imageWidth = this->grid.xSize;
+//    int imageHeight = this->grid.ySize;
 
-    int widgetWidth = ui->graphicsView->width();
-    int widgetHeight = ui->graphicsView->height();
+//    int widgetWidth = ui->graphicsView->width();
+//    int widgetHeight = ui->graphicsView->height();
 
-    float imageRatio = imageWidth / (imageHeight + 0.0);
-    float widgetRatio = widgetWidth / (widgetHeight + 0.0);
+//    float imageRatio = imageWidth / (imageHeight + 0.0);
+//    float widgetRatio = widgetWidth / (widgetHeight + 0.0);
 
-    int width;
-    int height;
+//    int width;
+//    int height;
 
-    if(imageRatio > widgetRatio)
-    {
-        width = widgetWidth;
-        height = width / imageRatio;
-    }
-    else
-    {
-        height = widgetHeight;
-        width = height * imageRatio;
-    }
+//    if(imageRatio > widgetRatio)
+//    {
+//        width = widgetWidth;
+//        height = width / imageRatio;
+//    }
+//    else
+//    {
+//        height = widgetHeight;
+//        width = height * imageRatio;
+//    }
 
-    QImage image = QImage(this->grid.xSize, this->grid.ySize, QImage::Format_RGB16);
-    for (int i = 0; i < this->grid.xSize; i++) {
-        for (int j = 0; j < this->grid.ySize; j++) {
-//            int index = i + this->grid.ySize * j + this->grid.ySize * this->grid.zSize * this->coordZ;
-            int index = (i * this->grid.ySize + j) * this->grid.zSize + this->coordZ;
-            int value = this->grid.tempMatrix[index];
-            int r = this->colors[value][0];
-            int g = this->colors[value][1];
-            int b = this->colors[value][2];
-            image.setPixel(i, j, qRgb(r, g, b));
-        }
-    }
+//    QImage image = QImage(this->grid.xSize, this->grid.ySize, QImage::Format_RGB16);
+//    for (int i = 0; i < this->grid.xSize; i++) {
+//        for (int j = 0; j < this->grid.ySize; j++) {
+////            int index = i + this->grid.ySize * j + this->grid.ySize * this->grid.zSize * this->coordZ;
+//            int index = (i * this->grid.ySize + j) * this->grid.zSize + this->coordZ;
+//            int value = this->grid.tempMatrix[index];
+//            int r = this->colors[value][0];
+//            int g = this->colors[value][1];
+//            int b = this->colors[value][2];
+//            image.setPixel(i, j, qRgb(r, g, b));
+//        }
+//    }
 
-    QGraphicsScene *oldScene = this->scene;
-    this->scene = new QGraphicsScene();
-    this->scene->addItem(
-        new QGraphicsPixmapItem(
-            QPixmap::fromImage(image).scaled(
-                width, height, Qt::KeepAspectRatio, Qt::FastTransformation
-            )
-        )
-    );
-    ui->graphicsView->setScene(this->scene);
-    delete oldScene;
+//    QGraphicsScene *oldScene = this->scene;
+//    this->scene = new QGraphicsScene();
+//    this->scene->addItem(
+//        new QGraphicsPixmapItem(
+//            QPixmap::fromImage(image).scaled(
+//                width, height, Qt::KeepAspectRatio, Qt::FastTransformation
+//            )
+//        )
+//    );
+//    ui->graphicsView->setScene(this->scene);
+//    delete oldScene;
 }
 
 void Widget::resizeEvent(QResizeEvent*)

@@ -55,8 +55,9 @@ void kernelInitGrid(
             for (int k = idz; k < zSize; k += offsetz)
             {
                 BYTE value = curand_uniform(rndState) < 0.5 ? 0 : 2;
-                data1[getIndex(xSize, ySize, zSize, i, j, k)] = value;
-                data2[getIndex(xSize, ySize, zSize, i, j, k)] = value;
+                int index = getIndex(xSize, ySize, zSize, i, j, k);
+                data1[index] = value;
+                data2[index] = value;
             }
         }
     }
@@ -76,17 +77,10 @@ double gridInteractionPotential(double interactionEnergy, double r)
 
 __global__
 void kernelAlgorithm(
-    BYTE *input,
-    BYTE *output,
-    curandState *randomStates,
-    DimensionEnum dimension,
-    int xSize,
-    int ySize,
-    int zSize,
-    int interactionEnergy,
-    double externalField,
-    int interactionRadius,
-    double temperature
+    BYTE *input, BYTE *output, curandState *randomStates,
+    DimensionEnum dimension, int xSize, int ySize, int zSize,
+    int interactionEnergy, double externalField, int interactionRadius, double temperature,
+    bool even
 )
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -104,7 +98,10 @@ void kernelAlgorithm(
         {
             for (int k = idz; k < zSize; k += offsetz)
             {
-                double gridSpinEnergy = externalField;
+                int index = getIndex(xSize, ySize, zSize, i, j, k);
+
+                if (even && index % 2 != 0) continue;
+                if (!even && index % 2 == 0) continue;
 
                 int radiusX = interactionRadius;
                 int radiusY = interactionRadius;
@@ -117,6 +114,7 @@ void kernelAlgorithm(
                     case DIM_3: break;
                 }
 
+                double gridSpinEnergy = externalField;
                 for (int x = i - radiusX; x <= i + radiusX; x++)
                 {
                     for (int y = j - radiusY; y <= j + radiusY; y++)
@@ -139,11 +137,10 @@ void kernelAlgorithm(
                     }
                 }
 
-                double value = exp(gridSpinEnergy / temperature);
-                double probplus  = value;
-                double probminus = 1.0 / value;
+                double expValue = exp(gridSpinEnergy / temperature);
+                double probplus  = expValue;
+                double probminus = 1.0 / expValue;
                 double probability = probplus / (probplus + probminus);
-                int index = getIndex(xSize, ySize, zSize, i, j, k);
 
                 if (curand_uniform(rndState) > probability)
                 {
@@ -189,23 +186,21 @@ void cudaAlgorithmStep(Grid *g, int algorithmSteps)
 {
     for (int i = 0; i < algorithmSteps; i++)
     {
-        // swap
-        BYTE *temp = g->prevMatrix;
-        g->prevMatrix = g->currMatrix;
-        g->currMatrix = temp;
+//        // swap
+//        BYTE *temp = g->prevMatrix;
+//        g->prevMatrix = g->currMatrix;
+//        g->currMatrix = temp;
 
         kernelAlgorithm<<<blocks, threads>>>(
-            g->prevMatrix,
-            g->currMatrix,
-            g->randomStates,
-            g->dimension,
-            g->xSize,
-            g->ySize,
-            g->zSize,
-            g->interactionEnergy,
-            g->externalField,
-            g->interactionRadius,
-            g->temperature
+            g->currMatrix, g->currMatrix, g->randomStates,
+            g->dimension, g->xSize, g->ySize, g->zSize,
+            g->interactionEnergy, g->externalField, g->interactionRadius, g->temperature, false
+        );
+
+        kernelAlgorithm<<<blocks, threads>>>(
+            g->currMatrix, g->currMatrix, g->randomStates,
+            g->dimension, g->xSize, g->ySize, g->zSize,
+            g->interactionEnergy, g->externalField, g->interactionRadius, g->temperature, true
         );
     }
 }

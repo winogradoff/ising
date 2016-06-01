@@ -255,7 +255,7 @@ void OGLWidget::setGrid(Grid grid)
 {
     this->grid = grid;
 
-    GLfloat percentOfCube = 0.1f;
+    GLfloat percentOfCube = 0.3f;
     GLfloat gridSize = 5.0f;
 
     GLfloat countX = this->grid.xSize;
