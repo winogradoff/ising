@@ -3,10 +3,14 @@
 
 #include <QWidget>
 #include <QOpenGLWidget>
+#include <QOpenGLFunctions>
 #include <GL/glu.h>
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <cuda_gl_interop.h>
 #include "grid.h"
 
-class OGLWidget : public QOpenGLWidget
+class OGLWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
 public:
     OGLWidget(QWidget *parent = 0);
@@ -50,6 +54,10 @@ private:
 
     // Рисование фигур
     void drawFigure();
+
+    // Работа с VBO
+    void createVBO(GLuint *vbo, struct cudaGraphicsResource **vbo_res, unsigned int vbo_res_flags);
+    void deleteVBO(GLuint *vbo, struct cudaGraphicsResource *vbo_res);
 
     // Параметры ламп
     static GLfloat light_ambient[];

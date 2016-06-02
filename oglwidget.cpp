@@ -31,6 +31,8 @@ OGLWidget::~OGLWidget()
 
 void OGLWidget::initializeGL()
 {
+    initializeOpenGLFunctions();
+
     glClearColor(0, 0, 0, 1);
 
     // Тест грубины
@@ -136,9 +138,9 @@ void OGLWidget::drawAxes()
     glVertex3f( axis_length, 0.0f, 0.0f);
     glEnd();
     glBegin(GL_LINE_STRIP);
-    glVertex3f( axis_length - nib_size, -nib_size, 0.0f);
-    glVertex3f( axis_length, 0.0f, 0.0f);
-    glVertex3f( axis_length - nib_size, nib_size, 0.0f);
+    glVertex3f(axis_length - nib_size, -nib_size, 0.0f);
+    glVertex3f(axis_length, 0.0f, 0.0f);
+    glVertex3f(axis_length - nib_size, nib_size, 0.0f);
     glEnd();
 
     // OY
@@ -194,7 +196,7 @@ void OGLWidget::drawFigure()
 
             // Перед
             glBegin(GL_QUADS);
-                glNormal3f(0.0f, -1.0f, 0.0f);
+//                glNormal3f(0.0f, -1.0f, 0.0f);
                 glVertex3f(x, y, z);
                 glVertex3f(x + size, y, z);
                 glVertex3f(x + size, y, z + size);
@@ -203,7 +205,7 @@ void OGLWidget::drawFigure()
 
             // Зад
             glBegin(GL_QUADS);
-                glNormal3f(0.0f, 1.0f, 0.0f);
+//                glNormal3f(0.0f, 1.0f, 0.0f);
                 glVertex3f(x, y + size, z);
                 glVertex3f(x, y + size, z + size);
                 glVertex3f(x + size, y + size, z + size);
@@ -212,7 +214,7 @@ void OGLWidget::drawFigure()
 
             // Верх
             glBegin(GL_QUADS);
-                glNormal3f(0.0f, 0.0f, 1.0f);
+//                glNormal3f(0.0f, 0.0f, 1.0f);
                 glVertex3f(x, y, z + size);
                 glVertex3f(x + size, y, z + size);
                 glVertex3f(x + size, y + size, z + size);
@@ -221,7 +223,7 @@ void OGLWidget::drawFigure()
 
             // Низ
             glBegin(GL_QUADS);
-                glNormal3f(0.0f, 0.0f, -1.0f);
+//                glNormal3f(0.0f, 0.0f, -1.0f);
                 glVertex3f(x, y, z);
                 glVertex3f(x, y + size, z);
                 glVertex3f(x + size, y + size, z);
@@ -230,7 +232,7 @@ void OGLWidget::drawFigure()
 
             // Лево
             glBegin(GL_QUADS);
-                glNormal3f(-1.0f, 0.0f, 0.0f);
+//                glNormal3f(-1.0f, 0.0f, 0.0f);
                 glVertex3f(x, y, z);
                 glVertex3f(x, y, z + size);
                 glVertex3f(x, y + size, z + size);
@@ -239,7 +241,7 @@ void OGLWidget::drawFigure()
 
             // Право
             glBegin(GL_QUADS);
-                glNormal3f(1.0f, 0.0f, 0.0f);
+//                glNormal3f(1.0f, 0.0f, 0.0f);
                 glVertex3f(x + size, y, z);
                 glVertex3f(x + size, y + size, z);
                 glVertex3f(x + size, y + size, z + size);
@@ -296,6 +298,31 @@ void OGLWidget::setGrid(Grid grid)
     }
 
     this->update();
+}
+
+void OGLWidget::createVBO(GLuint *vbo, struct cudaGraphicsResource **vbo_res, unsigned int vbo_res_flags)
+{
+    // create buffer object
+    glGenBuffers(1, vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, *vbo);
+
+    // initialize buffer object
+    unsigned int size = 100 * 100 * 4 * sizeof(float);
+    glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // register this buffer object with CUDA
+    cudaGraphicsGLRegisterBuffer(vbo_res, *vbo, vbo_res_flags);
+}
+
+void OGLWidget::deleteVBO(GLuint *vbo, struct cudaGraphicsResource *vbo_res)
+{
+    // unregister this buffer object with CUDA
+    cudaGraphicsUnregisterResource(vbo_res);
+    glBindBuffer(1, *vbo);
+    glDeleteBuffers(1, vbo);
+    *vbo = 0;
 }
 
 // Обработка движений мыши
