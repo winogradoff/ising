@@ -46,8 +46,8 @@ CUDA_INC = $$join(INCLUDEPATH,'" -I"','-I"','"')
 NVCC_LIBS = -lcuda -lcudart
 LIBS += cuda.lib cudart.lib opengl32.lib glu32.lib
 
-MSVCRT_LINK_FLAG_DEBUG = "/MDd"
-MSVCRT_LINK_FLAG_RELEASE = "/MD"
+MSVCRT_LINK_FLAG_DEBUG = "/MTd"
+MSVCRT_LINK_FLAG_RELEASE = "/MT"
 
 # Configuration of the Cuda compiler
 CONFIG(debug, debug|release) {
