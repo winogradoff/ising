@@ -7,12 +7,6 @@
 #include "grid.h"
 
 #define PLOT_SIZE 100
-
-// CUDA functions
-void cudaInitGrid(Grid *g);
-void cudaFreeGrid(Grid *g);
-void cudaUpdateTempMatrix(Grid *g);
-void cudaAlgorithmStep(Grid *g, int algorithmSteps);
 //
 
 class Widget;

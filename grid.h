@@ -26,4 +26,11 @@ struct Grid
     BYTE *deviceMatrix; // решётка на GPU
 };
 
+// CUDA functions
+void cudaInitGrid(Grid *g);
+void cudaFreeGrid(Grid *g);
+void cudaUpdateTempMatrix(Grid *g);
+void cudaAlgorithmStep(Grid *g, int algorithmSteps);
+void cudaTestVBO(struct cudaGraphicsResource **vbo_resource);
+
 #endif // GRID_H

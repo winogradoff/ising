@@ -2,7 +2,7 @@
 #define OGLWIDGET_H
 
 #include <QWidget>
-#include <QOpenGLWidget>
+#include <QGLWidget>
 #include <QOpenGLFunctions>
 #include <GL/glu.h>
 #include <cuda.h>
@@ -10,7 +10,7 @@
 #include <cuda_gl_interop.h>
 #include "grid.h"
 
-class OGLWidget : public QOpenGLWidget, protected QOpenGLFunctions
+class OGLWidget : public QGLWidget, protected QOpenGLFunctions
 {
 public:
     OGLWidget(QWidget *parent = 0);
@@ -21,7 +21,6 @@ public slots:
     void setXRotation(GLfloat angle);
     void setYRotation(GLfloat angle);
     void setZRotation(GLfloat angle);
-
 
 signals:
     void xRotationChanged(GLfloat angle);

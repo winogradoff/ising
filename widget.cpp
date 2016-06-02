@@ -48,12 +48,12 @@ Widget::~Widget()
     this->watcher.waitForFinished();
 }
 
-void Widget::on_dimensions_currentIndexChanged(int index)
+void Widget::on_dimensions_currentIndexChanged(int)
 {
     this->updateForm();
 }
 
-void Widget::on_coordZ_valueChanged(int value)
+void Widget::on_coordZ_valueChanged(int)
 {
     this->updateForm();
     this->updateImage();

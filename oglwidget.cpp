@@ -12,7 +12,7 @@ GLfloat OGLWidget::light_spot_direction[] = {0.0f, 0.0f, -1.0f, 1.0f};
 GLfloat OGLWidget::light_spot_cutoff = 30.0;
 GLfloat OGLWidget::light_spot_exponent = 15.0;
 
-OGLWidget::OGLWidget(QWidget *parent) : QOpenGLWidget(parent)
+OGLWidget::OGLWidget(QWidget *parent) : QGLWidget(parent)
 {
     this->xRot = 0.0;
     this->yRot = 0.0;
@@ -60,6 +60,13 @@ void OGLWidget::initializeGL()
     // Инициализация освещения
     glEnable(GL_LIGHTING);
     initializeLight();
+
+    // Проверка VBO
+    GLuint vbo;
+    struct cudaGraphicsResource *cuda_vbo_resource;
+    this->createVBO(&vbo, &cuda_vbo_resource, cudaGraphicsMapFlagsWriteDiscard);
+    cudaTestVBO(&cuda_vbo_resource);
+    this->deleteVBO(&vbo, cuda_vbo_resource);
 }
 
 void OGLWidget::paintGL()
