@@ -10,10 +10,7 @@
 
 extern "C"
 
-//dim3 blocks(8, 8, 8);
-//dim3 threads(8, 8, 8);
-
-dim3 threads(8, 8, 8);
+dim3 threads(16, 16, 4);
 
 __device__
 uint getIndex(uint xSize, uint ySize, uint zSize, uint i, uint j, uint k)
@@ -43,8 +40,17 @@ void kernelInitRandomStates(curandState *randomStates, uint xSize, uint ySize, u
     uint offsety = gridDim.y * blockDim.y;
     uint offsetz = gridDim.z * blockDim.z;
 
-    uint index = getIndex(offsetx, offsety, offsetz, idx, idy, idz);
-    curand_init(clock64(), index, 0, &(randomStates[index]));
+    for (uint i = idx; i < xSize; i += offsetx)
+    {
+        for (uint j = idy; j < ySize; j += offsety)
+        {
+            for (uint k = idz; k < zSize; k += offsetz)
+            {
+                uint index = getIndex(xSize, ySize, zSize, i, j, k);
+                curand_init(clock64(), index, 0, &(randomStates[index]));
+            }
+        }
+    }
 }
 
 __global__
@@ -60,7 +66,7 @@ void kernelInitGrid(
     uint offsety = gridDim.y * blockDim.y;
     uint offsetz = gridDim.z * blockDim.z;
 
-    curandState *rndState = &(randomStates[getIndex(offsetx, offsety, offsetz, idx, idy, idz)]);
+    curandState *rndState;
 
     for (uint i = idx; i < xSize; i += offsetx)
     {
@@ -68,8 +74,10 @@ void kernelInitGrid(
         {
             for (uint k = idz; k < zSize; k += offsetz)
             {
+                uint index = getIndex(xSize, ySize, zSize, i, j, k);
+                rndState = &(randomStates[index]);
                 uchar value = curand_uniform(rndState) < 0.5 ? 0 : 2;
-                data[getIndex(xSize, ySize, zSize, i, j, k)] = value;
+                data[index] = value;
             }
         }
     }
@@ -90,7 +98,7 @@ void kernelAlgorithm(
     uint offsety = gridDim.y * blockDim.y;
     uint offsetz = gridDim.z * blockDim.z;
 
-    curandState *rndState = &(randomStates[getIndex(offsetx, offsety, offsetz, idx, idy, idz)]);
+    curandState *rndState;
 
     for (uint i = idx; i < xSize; i += offsetx)
     {
@@ -142,6 +150,8 @@ void kernelAlgorithm(
                 double probplus  = expValue;
                 double probminus = 1.0 / expValue;
                 double probability = probplus / (probplus + probminus);
+
+                rndState = &(randomStates[index]);
 
                 if (curand_uniform(rndState) > probability)
                 {
@@ -281,13 +291,10 @@ void cudaInitGrid(Grid *g)
         ceil(g->zSize / float(threads.z))
     );
 
-    uint x = blocks.x * threads.x;
-    uint y = blocks.y * threads.y;
-    uint z = blocks.z * threads.z;
-    cudaMalloc((void **)& (g->randomStates), sizeof(curandState) * x * y * z);
-
     uint dataSize = g->xSize * g->ySize * g->zSize;
+    cudaMalloc((void **)& (g->randomStates), sizeof(curandState) * dataSize);
     cudaMalloc((void **)& (g->deviceMatrix), sizeof(uchar) * dataSize);
+
     kernelInitRandomStates<<<blocks, threads>>>(g->randomStates, g->xSize, g->ySize, g->zSize);
     kernelInitGrid<<<blocks, threads>>>(g->deviceMatrix, g->randomStates, g->xSize, g->ySize, g->zSize);
 }
@@ -296,12 +303,6 @@ void cudaFreeGrid(Grid *g)
 {
     if (g->randomStates != NULL) cudaFree(g->randomStates);
     if (g->deviceMatrix != NULL) cudaFree(g->deviceMatrix);
-}
-
-void cudaUpdateTempMatrix(Grid *g)
-{
-    uint dataSize = g->xSize * g->ySize * g->zSize;
-    cudaMemcpy(g->hostMatrix, g->deviceMatrix, sizeof(uchar) * dataSize, cudaMemcpyDeviceToHost);
 }
 
 void cudaAlgorithmStep(Grid *g, uint algorithmSteps)

@@ -231,9 +231,6 @@ void Widget::check()
 
 void Widget::updateImage()
 {
-    // copy to temp
-    cudaUpdateTempMatrix(&(this->grid));
-
     // Update OpenGL widget
     ui->openGLWidget->updateVBO();
     ui->openGLWidget->update();

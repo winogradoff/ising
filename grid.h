@@ -27,9 +27,7 @@ struct Grid
 // CUDA functions
 void cudaInitGrid(Grid *g);
 void cudaFreeGrid(Grid *g);
-void cudaUpdateTempMatrix(Grid *g);
 void cudaAlgorithmStep(Grid *g, uint algorithmSteps);
-
 void cudaInitVBO(Grid *g, struct cudaGraphicsResource **cuda_resource, float percentOfCube);
 void cudaUpdateVBO(Grid *g, struct cudaGraphicsResource **cuda_resource);
 
