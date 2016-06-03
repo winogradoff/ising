@@ -1,6 +1,3 @@
-#include <QtGui>
-#include <QtOpenGL>
-#include <QMouseEvent>
 #include "oglwidget.h"
 
 // Параматры лампы
@@ -18,6 +15,10 @@ OGLWidget::OGLWidget(QWidget *parent) : QGLWidget(parent)
     this->yRot = 0.0;
     this->zRot = 0.0;
     this->vertices = NULL;
+    this->vbo = 0;
+    this->cuda_resource = NULL;
+    this->glInitialized = false;
+    this->viewerPosition = ViewerPosition{0.0, 0.0, 8.0};
 }
 
 OGLWidget::~OGLWidget()
@@ -27,11 +28,51 @@ OGLWidget::~OGLWidget()
     {
         delete[] this->vertices;
     }
+
+    this->deleteVBO();
+}
+
+void OGLWidget::createVBO()
+{
+    // Создать VBO
+    glGenBuffers(1, &(this->vbo));
+    glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
+
+    // Выделить память (24 вершины на каждый куб)
+    uint size = this->grid.xSize * this->grid.ySize * this->grid.zSize * sizeof(VBOVertex) * 24;
+
+    glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // Подключить VBO к CUDA
+    cudaGraphicsGLRegisterBuffer(&(this->cuda_resource), this->vbo, cudaGraphicsMapFlagsWriteDiscard);
+}
+
+void OGLWidget::updateVBO()
+{
+    if (this->vbo)
+    {
+        cudaUpdateVBO(&(this->grid), &(this->cuda_resource));
+    }
+}
+
+void OGLWidget::deleteVBO()
+{
+    if (this->vbo)
+    {
+        // Отключить VBO от CUDA
+        cudaGraphicsUnregisterResource(this->cuda_resource);
+        glBindBuffer(1, this->vbo);
+        glDeleteBuffers(1, &(this->vbo));
+        this->vbo = 0;
+        this->cuda_resource = NULL;
+    }
 }
 
 void OGLWidget::initializeGL()
 {
     initializeOpenGLFunctions();
+    this->glInitialized = true;
 
     glClearColor(0, 0, 0, 1);
 
@@ -57,16 +98,9 @@ void OGLWidget::initializeGL()
 
     glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE);
 
-    // Инициализация освещения
+//     Инициализация освещения
     glEnable(GL_LIGHTING);
     initializeLight();
-
-    // Проверка VBO
-    GLuint vbo;
-    struct cudaGraphicsResource *cuda_vbo_resource;
-    this->createVBO(&vbo, &cuda_vbo_resource, cudaGraphicsMapFlagsWriteDiscard);
-    cudaTestVBO(&cuda_vbo_resource);
-    this->deleteVBO(&vbo, cuda_vbo_resource);
 }
 
 void OGLWidget::paintGL()
@@ -104,11 +138,16 @@ void OGLWidget::resizeGL(int width, int height)
     glLoadIdentity();
 
     GLdouble aspect = (GLdouble) width / (GLdouble) height;
-    gluPerspective(40.0, aspect, 1.0, 50.0);
+    gluPerspective(45.0, aspect, 0.01, 100.0);
 
-    gluLookAt(0.0,  0.0, 10.0,  // координаты позиции глаза налюдателя
-              0.0,  0.0, 0.0,  // координаты точки, распологающейся в центре экрана
-              0.0,  1.0, 0.0); // направление вектора, задающего верх
+    gluLookAt(
+        // координаты позиции глаза налюдателя
+        this->viewerPosition.x,  this->viewerPosition.y, this->viewerPosition.z,
+        // координаты точки, распологающейся в центре экрана
+        this->viewerPosition.x,  this->viewerPosition.y, 0.0,
+        // направление вектора, задающего верх
+        0.0,  1.0, 0.0
+    );
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -180,82 +219,23 @@ void OGLWidget::drawAxes()
 // Рисование фигуры
 void OGLWidget::drawFigure()
 {
-    // Отключить освещение для этого объекта
+    if (this->vbo == 0 && this->glInitialized)
+    {
+        this->deleteVBO();
+        this->createVBO();
+        cudaInitVBO(&(this->grid), &(this->cuda_resource), this->percentOfCube);
+        this->update();
+    }
+
     glPushAttrib(GL_LIGHTING_BIT);
     glDisable(GL_LIGHTING);
 
-    if (this->vertices != NULL)
-    {
-        GLfloat size = this->cubeSize;
-
-        for(unsigned int i = 0; i <= this->verticesSize; i += 3)
-        {
-            GLfloat x = this->vertices[i    ] - 0.5f * size;
-            GLfloat y = this->vertices[i + 1] - 0.5f * size;
-            GLfloat z = this->vertices[i + 2] - 0.5f * size;
-
-            switch(this->grid.hostMatrix[i / 3])
-            {
-                case 0: glColor3f(0.0f, 1.0f, 0.0f); break;
-                case 2: glColor3f(1.0f, 0.0f, 0.0f); break;
-                default: glColor3f(1.0f, 1.0f, 1.0f);
-            }
-
-            // Перед
-            glBegin(GL_QUADS);
-//                glNormal3f(0.0f, -1.0f, 0.0f);
-                glVertex3f(x, y, z);
-                glVertex3f(x + size, y, z);
-                glVertex3f(x + size, y, z + size);
-                glVertex3f(x, y, z + size);
-            glEnd();
-
-            // Зад
-            glBegin(GL_QUADS);
-//                glNormal3f(0.0f, 1.0f, 0.0f);
-                glVertex3f(x, y + size, z);
-                glVertex3f(x, y + size, z + size);
-                glVertex3f(x + size, y + size, z + size);
-                glVertex3f(x + size, y + size, z);
-            glEnd();
-
-            // Верх
-            glBegin(GL_QUADS);
-//                glNormal3f(0.0f, 0.0f, 1.0f);
-                glVertex3f(x, y, z + size);
-                glVertex3f(x + size, y, z + size);
-                glVertex3f(x + size, y + size, z + size);
-                glVertex3f(x, y + size, z + size);
-            glEnd();
-
-            // Низ
-            glBegin(GL_QUADS);
-//                glNormal3f(0.0f, 0.0f, -1.0f);
-                glVertex3f(x, y, z);
-                glVertex3f(x, y + size, z);
-                glVertex3f(x + size, y + size, z);
-                glVertex3f(x + size, y, z);
-            glEnd();
-
-            // Лево
-            glBegin(GL_QUADS);
-//                glNormal3f(-1.0f, 0.0f, 0.0f);
-                glVertex3f(x, y, z);
-                glVertex3f(x, y, z + size);
-                glVertex3f(x, y + size, z + size);
-                glVertex3f(x, y + size, z);
-            glEnd();
-
-            // Право
-            glBegin(GL_QUADS);
-//                glNormal3f(1.0f, 0.0f, 0.0f);
-                glVertex3f(x + size, y, z);
-                glVertex3f(x + size, y + size, z);
-                glVertex3f(x + size, y + size, z + size);
-                glVertex3f(x + size, y, z + size);
-            glEnd();
-        }
-    }
+    glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glVertexPointer(3, GL_FLOAT, 16, 0);
+    glColorPointer(3, GL_UNSIGNED_BYTE, 16, (void*) 12);
+    glDrawArrays(GL_QUADS, 0, this->grid.xSize * this->grid.ySize * this->grid.zSize * 24);
 
     glPopAttrib();
 }
@@ -264,72 +244,22 @@ void OGLWidget::setGrid(Grid grid)
 {
     this->grid = grid;
 
-    GLfloat percentOfCube = 0.3f;
-    GLfloat gridSize = 5.0f;
-
-    GLfloat countX = this->grid.xSize;
-    GLfloat countY = this->grid.ySize;
-    GLfloat countZ = this->grid.zSize;
-
-    // TODO: максимальный count
-    GLfloat cubeSize = (gridSize / countX) * percentOfCube;
-    GLfloat cubeSpace = (gridSize / countX) * (1.0f - percentOfCube);
-
-    GLfloat lengthX = countX * cubeSize + (countX - 1) * cubeSpace;
-    GLfloat lengthY = countY * cubeSize + (countY - 1) * cubeSpace;
-    GLfloat lengthZ = countZ * cubeSize + (countZ - 1) * cubeSpace;
-
-    this->cubeSize = cubeSize;
-
-    if (this->vertices != NULL)
+    if (this->glInitialized)
     {
-        delete[] this->vertices;
-        this->vertices = NULL;
+        this->deleteVBO();
+        this->createVBO();
+        cudaInitVBO(&(this->grid), &(this->cuda_resource), this->percentOfCube);
     }
-
-    this->verticesSize = countX * countY * countZ * 3;
-    this->vertices = new GLfloat[this->verticesSize];
-
-    unsigned int pos = 0;
-    for (int i = 0; i < countX; i++)
-    {
-        for (int j = 0; j < countY; j++)
-        {
-            for (int k = 0; k < countZ; k++)
-            {
-                this->vertices[pos++] = i * (cubeSize + cubeSpace) + 0.5f * (cubeSize - lengthX);
-                this->vertices[pos++] = j * (cubeSize + cubeSpace) + 0.5f * (cubeSize - lengthY);
-                this->vertices[pos++] = k * (cubeSize + cubeSpace) + 0.5f * (cubeSize - lengthZ);
-            }
-        }
-    }
-
-    this->update();
 }
 
-void OGLWidget::createVBO(GLuint *vbo, struct cudaGraphicsResource **vbo_res, unsigned int vbo_res_flags)
+void OGLWidget::setCubeSize(int value)
 {
-    // create buffer object
-    glGenBuffers(1, vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, *vbo);
+    this->percentOfCube = value / 100.0f;
 
-    // initialize buffer object
-    unsigned int size = 100 * 100 * 4 * sizeof(float);
-    glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    // register this buffer object with CUDA
-    cudaGraphicsGLRegisterBuffer(vbo_res, *vbo, vbo_res_flags);
-}
-
-void OGLWidget::deleteVBO(GLuint *vbo, struct cudaGraphicsResource *vbo_res)
-{
-    // unregister this buffer object with CUDA
-    cudaGraphicsUnregisterResource(vbo_res);
-    glBindBuffer(1, *vbo);
-    glDeleteBuffers(1, vbo);
-    *vbo = 0;
+    if (vbo)
+    {
+        cudaInitVBO(&(this->grid), &(this->cuda_resource), this->percentOfCube);
+    }
 }
 
 // Обработка движений мыши
@@ -386,8 +316,8 @@ void OGLWidget::mousePressEvent(QMouseEvent *event)
 
 void OGLWidget::mouseMoveEvent(QMouseEvent *event)
 {
-    GLfloat dx = GLfloat( event->x() - lastPos.x() ) / 5.0;
-    GLfloat dy = GLfloat( event->y() - lastPos.y() ) / 5.0;
+    GLfloat dx = GLfloat( event->x() - lastPos.x() ) / 10.0f;
+    GLfloat dy = GLfloat( event->y() - lastPos.y() ) / 10.0f;
 
     setXRotation(xRot + dy);
 
@@ -401,4 +331,50 @@ void OGLWidget::mouseMoveEvent(QMouseEvent *event)
 //    }
 
     lastPos = event->pos();
+}
+
+void OGLWidget::wheelEvent(QWheelEvent *event)
+{
+    int delta = event->delta();
+
+    if (delta < 0)
+    {
+        this->viewerPosition.z += 0.05f;
+    }
+    else if (delta > 0)
+    {
+        this->viewerPosition.z -= 0.05f;
+    }
+
+    if (this->viewerPosition.z < 0.02f) this->viewerPosition.z = 0.02f;
+    if (this->viewerPosition.z > 10.0f) this->viewerPosition.z = 10.0f;
+
+    this->resizeGL(this->width(), this->height());
+    this->update();
+}
+
+void OGLWidget::keyPressEvent(QKeyEvent *event)
+{
+    switch(event->key())
+    {
+        case Qt::Key_Up:
+        case Qt::Key_W:
+            this->viewerPosition.y += 0.05f;
+        break;
+        case Qt::Key_Down:
+        case Qt::Key_S:
+            this->viewerPosition.y -= 0.05f;
+        break;
+        case Qt::Key_Left:
+        case Qt::Key_A:
+            this->viewerPosition.x -= 0.05f;
+        break;
+        case Qt::Key_Right:
+        case Qt::Key_D:
+            this->viewerPosition.x += 0.05f;
+        break;
+    }
+
+    this->resizeGL(this->width(), this->height());
+    this->update();
 }

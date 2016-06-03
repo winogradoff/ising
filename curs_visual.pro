@@ -6,7 +6,8 @@ TEMPLATE = app
 HEADERS += widget.h \
     grid.h \
     qcustomplot.h \
-    oglwidget.h
+    oglwidget.h \
+    types.h
 
 SOURCES += main.cpp\
     widget.cpp \

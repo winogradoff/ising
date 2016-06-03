@@ -59,6 +59,12 @@ void Widget::on_coordZ_valueChanged(int)
     this->updateImage();
 }
 
+void Widget::on_cubeSize_valueChanged(int value)
+{
+    ui->openGLWidget->setCubeSize(value);
+    ui->openGLWidget->update();
+}
+
 void Widget::on_newButton_clicked()
 {
     this->newGrid();
@@ -197,6 +203,7 @@ void Widget::newGrid()
     this->grid.hostMatrix = new BYTE[this->grid.xSize * this->grid.ySize * this->grid.zSize];
 
     ui->openGLWidget->setGrid(this->grid);
+    ui->openGLWidget->setCubeSize(ui->cubeSize->value());
 }
 
 void Widget::run()
@@ -228,6 +235,7 @@ void Widget::updateImage()
     cudaUpdateTempMatrix(&(this->grid));
 
     // Update OpenGL widget
+    ui->openGLWidget->updateVBO();
     ui->openGLWidget->update();
 
 //    // Update QImage widget

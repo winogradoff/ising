@@ -7,9 +7,7 @@
 #include <curand.h>
 #include <curand_kernel.h>
 
-typedef unsigned char BYTE;
-
-enum DimensionEnum {DIM_1, DIM_2, DIM_3};
+#include "types.h"
 
 struct Grid
 {
@@ -22,15 +20,17 @@ struct Grid
     double temperature; // температура
 
     curandState *randomStates; // состояния генераторов случайных чисел CUDA
-    BYTE *hostMatrix; // решётка на CPU
-    BYTE *deviceMatrix; // решётка на GPU
+    uchar *hostMatrix; // решётка на CPU
+    uchar *deviceMatrix; // решётка на GPU
 };
 
 // CUDA functions
 void cudaInitGrid(Grid *g);
 void cudaFreeGrid(Grid *g);
 void cudaUpdateTempMatrix(Grid *g);
-void cudaAlgorithmStep(Grid *g, int algorithmSteps);
-void cudaTestVBO(struct cudaGraphicsResource **vbo_resource);
+void cudaAlgorithmStep(Grid *g, uint algorithmSteps);
+
+void cudaInitVBO(Grid *g, struct cudaGraphicsResource **cuda_resource, float percentOfCube);
+void cudaUpdateVBO(Grid *g, struct cudaGraphicsResource **cuda_resource);
 
 #endif // GRID_H

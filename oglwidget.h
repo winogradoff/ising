@@ -1,13 +1,19 @@
 #ifndef OGLWIDGET_H
 #define OGLWIDGET_H
 
+#include <QtGui>
 #include <QWidget>
 #include <QGLWidget>
+#include <QMouseEvent>
+#include <QWheelEvent>
+#include <QKeyEvent>
+#include <QtOpenGL>
 #include <QOpenGLFunctions>
 #include <GL/glu.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
+#include "types.h"
 #include "grid.h"
 
 class OGLWidget : public QGLWidget, protected QOpenGLFunctions
@@ -16,6 +22,15 @@ public:
     OGLWidget(QWidget *parent = 0);
     ~OGLWidget();
     void setGrid(Grid grid);
+
+    void setCubeSize(int value);
+
+    // Vertex Buffer Object <-> CUDA
+    GLuint vbo;
+    struct cudaGraphicsResource *cuda_resource;
+    void createVBO();
+    void deleteVBO();
+    void updateVBO();
 
 public slots:
     void setXRotation(GLfloat angle);
@@ -33,8 +48,12 @@ protected:
     void paintGL();
     void mousePressEvent( QMouseEvent * );
     void mouseMoveEvent( QMouseEvent * );
+    void wheelEvent(QWheelEvent *event);
+    void keyPressEvent(QKeyEvent *event);
 
 private:
+    bool glInitialized;
+
     GLfloat xRot;
     GLfloat yRot;
     GLfloat zRot;
@@ -42,21 +61,11 @@ private:
 
     Grid grid;
     GLfloat *vertices;
-    unsigned int verticesSize;
-    GLfloat cubeSize;
+    uint verticesSize;
 
-    // Инициализация освещения
-    void initializeLight();
+    GLfloat percentOfCube;
 
-    // Рисование осей координат
-    void drawAxes();
-
-    // Рисование фигур
-    void drawFigure();
-
-    // Работа с VBO
-    void createVBO(GLuint *vbo, struct cudaGraphicsResource **vbo_res, unsigned int vbo_res_flags);
-    void deleteVBO(GLuint *vbo, struct cudaGraphicsResource *vbo_res);
+    ViewerPosition viewerPosition;
 
     // Параметры ламп
     static GLfloat light_ambient[];
@@ -66,6 +75,15 @@ private:
     static GLfloat light_spot_direction[];
     static GLfloat light_spot_cutoff;
     static GLfloat light_spot_exponent;
+
+    // Инициализация освещения
+    void initializeLight();
+
+    // Рисование осей координат
+    void drawAxes();
+
+    // Рисование фигур
+    void drawFigure();
 };
 
 #endif // OGLWIDGET_H
