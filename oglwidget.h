@@ -60,24 +60,9 @@ private:
     QPoint lastPos;
 
     Grid grid;
-    GLfloat *vertices;
-    uint verticesSize;
-
-    GLfloat percentOfCube;
+    int percentOfCube;
 
     ViewerPosition viewerPosition;
-
-    // Параметры ламп
-    static GLfloat light_ambient[];
-    static GLfloat light_specular[];
-    static GLfloat light_diffuse[];
-    static GLfloat light_position[];
-    static GLfloat light_spot_direction[];
-    static GLfloat light_spot_cutoff;
-    static GLfloat light_spot_exponent;
-
-    // Инициализация освещения
-    void initializeLight();
 
     // Рисование осей координат
     void drawAxes();

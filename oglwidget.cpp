@@ -1,34 +1,18 @@
 #include "oglwidget.h"
 
-// Параматры лампы
-GLfloat OGLWidget::light_ambient[] = {0.0f, 0.0f, 0.0f};
-GLfloat OGLWidget::light_diffuse[] = {1.0f, 1.0f, 1.0f};
-GLfloat OGLWidget::light_specular[] = {1.0f, 1.0f, 1.0f};
-GLfloat OGLWidget::light_position[] = {0.0f, 0.0f, 100.0f, 0.0f};
-GLfloat OGLWidget::light_spot_direction[] = {0.0f, 0.0f, -1.0f, 1.0f};
-GLfloat OGLWidget::light_spot_cutoff = 30.0;
-GLfloat OGLWidget::light_spot_exponent = 15.0;
-
 OGLWidget::OGLWidget(QWidget *parent) : QGLWidget(parent)
 {
     this->xRot = 0.0;
     this->yRot = 0.0;
     this->zRot = 0.0;
-    this->vertices = NULL;
     this->vbo = 0;
     this->cuda_resource = NULL;
     this->glInitialized = false;
-    this->viewerPosition = ViewerPosition{0.0, 0.0, 8.0};
+    this->viewerPosition = ViewerPosition{0.0, 0.0, 10.0};
 }
 
 OGLWidget::~OGLWidget()
 {
-    // TODO
-    if (this->vertices != NULL)
-    {
-        delete[] this->vertices;
-    }
-
     this->deleteVBO();
 }
 
@@ -60,7 +44,7 @@ void OGLWidget::deleteVBO()
 {
     if (this->vbo)
     {
-        // Отключить VBO от CUDA
+        // Отключить VBO от CUDA и удалить
         cudaGraphicsUnregisterResource(this->cuda_resource);
         glBindBuffer(1, this->vbo);
         glDeleteBuffers(1, &(this->vbo));
@@ -82,25 +66,16 @@ void OGLWidget::initializeGL()
     // Удаление невидимых граней
     glEnable(GL_CULL_FACE);
 
-    //    // Приведение нормалей к единичной длине
-    //    glEnable(GL_NORMALIZE);
-
     // Обход против часововй
     glFrontFace(GL_CCW);
 
     // Сглаживание
     glEnable(GL_MULTISAMPLE);
 
-    // Закрашивание
-    //    glShadeModel(GL_SMOOTH);
-    //    glShadeModel(GL_FLAT);
-    glEnable(GL_COLOR_MATERIAL);
-
-    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE);
-
-//     Инициализация освещения
-    glEnable(GL_LIGHTING);
-    initializeLight();
+//    // Закрашивание
+//    glShadeModel(GL_SMOOTH);
+//    glShadeModel(GL_FLAT);
+//    glEnable(GL_COLOR_MATERIAL);
 }
 
 void OGLWidget::paintGL()
@@ -115,17 +90,19 @@ void OGLWidget::paintGL()
 
     glPushMatrix();
 
-    glTranslatef(0.0, 0.0, 0.0);
-    glScalef(1.0, 1.0, 1.0);
-    glRotatef(0.0, 1.0, 0.0, 0.0);
-    glRotatef(0.0, 0.0, 1.0, 0.0);
-    glRotatef(0.0, 0.0, 0.0, 1.0);
+        glTranslatef(0.0, 0.0, 0.0);
+        glScalef(1.0, 1.0, 1.0);
+        glRotatef(0.0, 1.0, 0.0, 0.0);
+        glRotatef(0.0, 0.0, 1.0, 0.0);
+        glRotatef(0.0, 0.0, 0.0, 1.0);
 
-    // Оси OX, OY, OZ
-    this->drawAxes();
+        glPushAttrib(GL_LIGHTING_BIT);
+        glDisable(GL_LIGHTING);
 
-//    glColor4f(1.0, 1.0, 1.0, 1.0);
-    this->drawFigure();
+        this->drawAxes();
+        this->drawFigure();
+
+        glPopAttrib();
 
     glPopMatrix();
 }
@@ -153,19 +130,6 @@ void OGLWidget::resizeGL(int width, int height)
     glLoadIdentity();
 }
 
-// Инициализация освещения
-void OGLWidget::initializeLight()
-{
-    glEnable(GL_LIGHT0);
-    glLightfv(GL_LIGHT0, GL_AMBIENT,        OGLWidget::light_ambient);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE,        OGLWidget::light_diffuse);
-    glLightfv(GL_LIGHT0, GL_SPECULAR,       OGLWidget::light_specular);
-    glLightfv(GL_LIGHT0, GL_POSITION,       OGLWidget::light_position);
-    glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, OGLWidget::light_spot_direction );
-    glLightf(GL_LIGHT0,  GL_SPOT_CUTOFF,    OGLWidget::light_spot_cutoff);
-    glLightf(GL_LIGHT0,  GL_SPOT_EXPONENT,  OGLWidget::light_spot_exponent);
-}
-
 // Рисование осей координат
 void OGLWidget::drawAxes()
 {
@@ -178,7 +142,7 @@ void OGLWidget::drawAxes()
     glLineWidth(3.0f);
 
     // OX
-    glColor3f(1.0, 0.0, 0.0);
+    glColor3f(0.7f, 0.0f, 0.0f);
     glBegin(GL_LINES);
     glVertex3f(-axis_length, 0.0f, 0.0f);
     glVertex3f( axis_length, 0.0f, 0.0f);
@@ -190,7 +154,7 @@ void OGLWidget::drawAxes()
     glEnd();
 
     // OY
-    glColor3f(0.0, 1.0, 0.0);
+    glColor3f(0.0f, 0.7f, 0.0f);
     glBegin(GL_LINES);
     glVertex3f(0.0, -axis_length, 0.0);
     glVertex3f(0.0, axis_length, 0.0);
@@ -202,7 +166,7 @@ void OGLWidget::drawAxes()
     glEnd();
 
     // OZ
-    glColor3f(0.0, 0.0, 1.0);
+    glColor3f(0.0f, 0.0f, 0.7f);
     glBegin(GL_LINES);
     glVertex3f(0.0, 0.0, -axis_length);
     glVertex3f(0.0, 0.0, axis_length);
@@ -216,7 +180,6 @@ void OGLWidget::drawAxes()
     glPopAttrib();
 }
 
-// Рисование фигуры
 void OGLWidget::drawFigure()
 {
     if (this->vbo == 0 && this->glInitialized)
@@ -227,17 +190,14 @@ void OGLWidget::drawFigure()
         this->update();
     }
 
-    glPushAttrib(GL_LIGHTING_BIT);
-    glDisable(GL_LIGHTING);
-
     glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 16, 0);
-    glColorPointer(3, GL_UNSIGNED_BYTE, 16, (void*) 12);
-    glDrawArrays(GL_QUADS, 0, this->grid.xSize * this->grid.ySize * this->grid.zSize * 24);
 
-    glPopAttrib();
+    glVertexPointer(3, GL_FLOAT, 16, (void *) 0);
+    glColorPointer(4, GL_UNSIGNED_BYTE, 16, (void *) 12);
+
+    glDrawArrays(GL_QUADS, 0, this->grid.xSize * this->grid.ySize * this->grid.zSize * 24);
 }
 
 void OGLWidget::setGrid(Grid grid)
@@ -254,7 +214,7 @@ void OGLWidget::setGrid(Grid grid)
 
 void OGLWidget::setCubeSize(int value)
 {
-    this->percentOfCube = value / 100.0f;
+    this->percentOfCube = value;
 
     if (vbo)
     {
@@ -282,7 +242,6 @@ void OGLWidget::setXRotation(GLfloat angle)
     if (angle != xRot)
     {
         xRot = angle;
-        //        emit xRotationChanged(angle);
         update();
     }
 }
@@ -293,7 +252,6 @@ void OGLWidget::setYRotation(GLfloat angle)
     if (angle != yRot)
     {
         yRot = angle;
-        //        emit yRotationChanged(angle);
         update();
     }
 }
@@ -304,7 +262,6 @@ void OGLWidget::setZRotation(GLfloat angle)
     if (angle != zRot)
     {
         zRot = angle;
-        //        emit zRotationChanged(angle);
         update();
     }
 }
@@ -325,10 +282,10 @@ void OGLWidget::mouseMoveEvent(QMouseEvent *event)
     {
         setYRotation(yRot + dx);
     }
-//    else if(event->buttons() & Qt::RightButton)
-//    {
-//        setZRotation(zRot + dx);
-//    }
+    else if(event->buttons() & Qt::RightButton)
+    {
+        setZRotation(zRot + dx);
+    }
 
     lastPos = event->pos();
 }
@@ -347,7 +304,7 @@ void OGLWidget::wheelEvent(QWheelEvent *event)
     }
 
     if (this->viewerPosition.z < 0.02f) this->viewerPosition.z = 0.02f;
-    if (this->viewerPosition.z > 10.0f) this->viewerPosition.z = 10.0f;
+    if (this->viewerPosition.z > 20.0f) this->viewerPosition.z = 20.0f;
 
     this->resizeGL(this->width(), this->height());
     this->update();

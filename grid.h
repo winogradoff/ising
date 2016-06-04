@@ -20,7 +20,7 @@ struct Grid
     double temperature; // температура
 
     curandState *randomStates; // состояния генераторов случайных чисел CUDA
-    uchar *hostMatrix; // решётка на CPU
+    uchar *tempDeviceMatrix;
     uchar *deviceMatrix; // решётка на GPU
 };
 
@@ -28,7 +28,7 @@ struct Grid
 void cudaInitGrid(Grid *g);
 void cudaFreeGrid(Grid *g);
 void cudaAlgorithmStep(Grid *g, uint algorithmSteps);
-void cudaInitVBO(Grid *g, struct cudaGraphicsResource **cuda_resource, float percentOfCube);
+void cudaInitVBO(Grid *g, struct cudaGraphicsResource **cuda_resource, int percentOfCube);
 void cudaUpdateVBO(Grid *g, struct cudaGraphicsResource **cuda_resource);
 
 #endif // GRID_H

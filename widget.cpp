@@ -13,7 +13,7 @@ Widget::Widget(QWidget *parent) : QWidget(parent), ui(new Ui::Widget)
     connect(&(this->watcher), &QFutureWatcher<void>::finished, this, &Widget::check);
 
     this->grid.randomStates = NULL;
-    this->grid.hostMatrix = NULL;
+    this->grid.tempDeviceMatrix = NULL;
     this->grid.deviceMatrix = NULL;
 
     this->state = 0;
@@ -197,10 +197,7 @@ void Widget::newGrid()
     }
 
     cudaFreeGrid(&(this->grid));
-    if (this->grid.hostMatrix != NULL) delete[] this->grid.hostMatrix;
-
     cudaInitGrid(&(this->grid));
-    this->grid.hostMatrix = new BYTE[this->grid.xSize * this->grid.ySize * this->grid.zSize];
 
     ui->openGLWidget->setGrid(this->grid);
     ui->openGLWidget->setCubeSize(ui->cubeSize->value());

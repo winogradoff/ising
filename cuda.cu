@@ -1,16 +1,20 @@
 #include <cstdio>
-#include <cuda.h>
 
-// cuRAND
+#include <cuda.h>
 #include <curand.h>
 #include <curand_kernel.h>
 
 #include "types.h"
 #include "grid.h"
 
-extern "C"
+dim3 blocks_1d(1, 1, 1);
+dim3 threads_1d(1024, 1, 1);
 
-dim3 threads(16, 16, 4);
+dim3 blocks_2d(16, 16, 1);
+dim3 threads_2d(32, 32, 1);
+
+dim3 blocks_3d(4, 8, 8);
+dim3 threads_3d(16, 8, 8);
 
 __device__
 uint getIndex(uint xSize, uint ySize, uint zSize, uint i, uint j, uint k)
@@ -30,8 +34,26 @@ double gridInteractionPotential(double interactionEnergy, double r)
     return interactionEnergy / (r * r);
 }
 
+//// float -> half float
+//__device__ short floatToHalf(float value)
+//{
+//    short fltInt16;
+//    int fltInt32;
+//    memcpy(&fltInt32, &value, sizeof(float));
+//    fltInt16 = ((fltInt32 & 0x7fffffff) >> 13) - (0x38000000 >> 13);
+//    fltInt16 |= ((fltInt32 & 0x80000000) >> 16);
+//    return fltInt16;
+//}
+
+__device__
+VBOVertex makeVertex(float x, float y, float z, uchar r, uchar g, uchar b, uchar a)
+{
+    return VBOVertex{x, y, z, r, g, b, a};
+    // VBOVertex{floatToHalf(x), floatToHalf(y), floatToHalf(z), r, g, b, a};
+}
+
 __global__
-void kernelInitRandomStates(curandState *randomStates, uint xSize, uint ySize, uint zSize)
+void kernelInitRandomStates(curandState *randomStates)
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -40,17 +62,8 @@ void kernelInitRandomStates(curandState *randomStates, uint xSize, uint ySize, u
     uint offsety = gridDim.y * blockDim.y;
     uint offsetz = gridDim.z * blockDim.z;
 
-    for (uint i = idx; i < xSize; i += offsetx)
-    {
-        for (uint j = idy; j < ySize; j += offsety)
-        {
-            for (uint k = idz; k < zSize; k += offsetz)
-            {
-                uint index = getIndex(xSize, ySize, zSize, i, j, k);
-                curand_init(clock64(), index, 0, &(randomStates[index]));
-            }
-        }
-    }
+    uint index = getIndex(offsetx, offsety, offsetz, idx, idy, idz);
+    curand_init(clock64(), index, 0, &(randomStates[index]));
 }
 
 __global__
@@ -66,7 +79,7 @@ void kernelInitGrid(
     uint offsety = gridDim.y * blockDim.y;
     uint offsetz = gridDim.z * blockDim.z;
 
-    curandState *rndState;
+    curandState *rndState = &(randomStates[getIndex(offsetx, offsety, offsetz, idx, idy, idz)]);
 
     for (uint i = idx; i < xSize; i += offsetx)
     {
@@ -75,7 +88,6 @@ void kernelInitGrid(
             for (uint k = idz; k < zSize; k += offsetz)
             {
                 uint index = getIndex(xSize, ySize, zSize, i, j, k);
-                rndState = &(randomStates[index]);
                 uchar value = curand_uniform(rndState) < 0.5 ? 0 : 2;
                 data[index] = value;
             }
@@ -88,28 +100,29 @@ void kernelAlgorithm(
     uchar *data, curandState *randomStates,
     DimensionEnum dimension, uint xSize, uint ySize, uint zSize,
     int interactionEnergy, double externalField, int interactionRadius, double temperature,
-    bool even
+    int iterx, int itery, int iterz
 )
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint idy = blockIdx.y * blockDim.y + threadIdx.y;
     uint idz = blockIdx.z * blockDim.z + threadIdx.z;
-    uint offsetx = gridDim.x * blockDim.x;
-    uint offsety = gridDim.y * blockDim.y;
-    uint offsetz = gridDim.z * blockDim.z;
+    uint offsetx = gridDim.x * blockDim.x  *(interactionRadius + 1);
+    uint offsety = gridDim.y * blockDim.y * (interactionRadius + 1);
+    uint offsetz = gridDim.z * blockDim.z * (interactionRadius + 1);
 
-    curandState *rndState;
+    uint xRndSize = gridDim.x * blockDim.x;
+    uint yRndSize = gridDim.y * blockDim.y;
+    uint zRndSize = gridDim.z * blockDim.z;
 
-    for (uint i = idx; i < xSize; i += offsetx)
+    curandState *rndState = &(randomStates[getIndex(xRndSize, yRndSize, zRndSize, idx, idy, idz)]);
+
+    for (uint i = idx + idx*interactionRadius + iterx; i < xSize; i += offsetx)
     {
-        for (uint j = idy; j < ySize; j += offsety)
+        for (uint j = idy + idy*interactionRadius + itery; j < ySize; j += offsety)
         {
-            for (uint k = idz; k < zSize; k += offsetz)
+            for (uint k = idz + idz*interactionRadius + iterz; k < zSize; k += offsetz)
             {
                 int index = getIndex(xSize, ySize, zSize, i, j, k);
-
-                if (even && index % 2 != 0) continue;
-                if (!even && index % 2 == 0) continue;
 
                 int radiusX = interactionRadius;
                 int radiusY = interactionRadius;
@@ -135,7 +148,7 @@ void kernelAlgorithm(
 
                             if (xx == i && yy == j && zz == k) continue;
 
-                            double dist = gridDistantion(i, j, k, xx, yy, zz);
+                            double dist = gridDistantion(i, j, k, x, y, z);
 
                             if (dist <= interactionRadius)
                             {
@@ -151,8 +164,6 @@ void kernelAlgorithm(
                 double probminus = 1.0 / expValue;
                 double probability = probplus / (probplus + probminus);
 
-                rndState = &(randomStates[index]);
-
                 if (curand_uniform(rndState) > probability)
                 {
                     data[index] = 0;
@@ -167,7 +178,7 @@ void kernelAlgorithm(
 }
 
 __global__
-void kernelInitVBO(VBOVertex *verts, uchar *data, uint xSize, uint ySize, uint zSize, float percentOfCube)
+void kernelInitVBO(VBOVertex *verts, uchar *data, uint xSize, uint ySize, uint zSize, int percentOfCube)
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -178,9 +189,9 @@ void kernelInitVBO(VBOVertex *verts, uchar *data, uint xSize, uint ySize, uint z
 
     float gridSize = 5.0f;
 
-    // TODO: максимальный count
-    float cubeSize = (gridSize / xSize) * percentOfCube;
-    float cubeSpace = (gridSize / xSize) * (1.0f - percentOfCube);
+    // TODO
+    float cubeSize = (gridSize / xSize) * (0.01f * percentOfCube);
+    float cubeSpace = (gridSize / xSize) * (0.01f * (100 - percentOfCube));
 
     float lengthX = xSize * cubeSize + (xSize - 1) * cubeSpace;
     float lengthY = ySize * cubeSize + (ySize - 1) * cubeSpace;
@@ -209,40 +220,40 @@ void kernelInitVBO(VBOVertex *verts, uchar *data, uint xSize, uint ySize, uint z
                 uint v = index * 24;
 
                 // Перед
-                verts[v++] = VBOVertex{x,            y,            z           , r, g, b, a};
-                verts[v++] = VBOVertex{x + cubeSize, y,            z           , r, g, b, a};
-                verts[v++] = VBOVertex{x + cubeSize, y,            z + cubeSize, r, g, b, a};
-                verts[v++] = VBOVertex{x,            y,            z + cubeSize, r, g, b, a};
+                verts[v++] = makeVertex(x,            y,            z           , r, g, b, a);
+                verts[v++] = makeVertex(x + cubeSize, y,            z           , r, g, b, a);
+                verts[v++] = makeVertex(x + cubeSize, y,            z + cubeSize, r, g, b, a);
+                verts[v++] = makeVertex(x,            y,            z + cubeSize, r, g, b, a);
 
                 // Зад
-                verts[v++] = VBOVertex{x,            y + cubeSize, z           , r, g, b, a};
-                verts[v++] = VBOVertex{x,            y + cubeSize, z + cubeSize, r, g, b, a};
-                verts[v++] = VBOVertex{x + cubeSize, y + cubeSize, z + cubeSize, r, g, b, a};
-                verts[v++] = VBOVertex{x + cubeSize, y + cubeSize, z           , r, g, b, a};
+                verts[v++] = makeVertex(x,            y + cubeSize, z           , r, g, b, a);
+                verts[v++] = makeVertex(x,            y + cubeSize, z + cubeSize, r, g, b, a);
+                verts[v++] = makeVertex(x + cubeSize, y + cubeSize, z + cubeSize, r, g, b, a);
+                verts[v++] = makeVertex(x + cubeSize, y + cubeSize, z           , r, g, b, a);
 
                 // Верх
-                verts[v++] = VBOVertex{x,            y,            z + cubeSize, r, g, b, a};
-                verts[v++] = VBOVertex{x + cubeSize, y,            z + cubeSize, r, g, b, a};
-                verts[v++] = VBOVertex{x + cubeSize, y + cubeSize, z + cubeSize, r, g, b, a};
-                verts[v++] = VBOVertex{x,            y + cubeSize, z + cubeSize, r, g, b, a};
+                verts[v++] = makeVertex(x,            y,            z + cubeSize, r, g, b, a);
+                verts[v++] = makeVertex(x + cubeSize, y,            z + cubeSize, r, g, b, a);
+                verts[v++] = makeVertex(x + cubeSize, y + cubeSize, z + cubeSize, r, g, b, a);
+                verts[v++] = makeVertex(x,            y + cubeSize, z + cubeSize, r, g, b, a);
 
                 // Низ
-                verts[v++] = VBOVertex{x,            y,            z           , r, g, b, a};
-                verts[v++] = VBOVertex{x,            y + cubeSize, z           , r, g, b, a};
-                verts[v++] = VBOVertex{x + cubeSize, y + cubeSize, z           , r, g, b, a};
-                verts[v++] = VBOVertex{x + cubeSize, y,            z           , r, g, b, a};
+                verts[v++] = makeVertex(x,            y,            z           , r, g, b, a);
+                verts[v++] = makeVertex(x,            y + cubeSize, z           , r, g, b, a);
+                verts[v++] = makeVertex(x + cubeSize, y + cubeSize, z           , r, g, b, a);
+                verts[v++] = makeVertex(x + cubeSize, y,            z           , r, g, b, a);
 
                 // Лево
-                verts[v++] = VBOVertex{x,            y,            z           , r, g, b, a};
-                verts[v++] = VBOVertex{x,            y,            z + cubeSize, r, g, b, a};
-                verts[v++] = VBOVertex{x,            y + cubeSize, z + cubeSize, r, g, b, a};
-                verts[v++] = VBOVertex{x,            y + cubeSize, z           , r, g, b, a};
+                verts[v++] = makeVertex(x,            y,            z           , r, g, b, a);
+                verts[v++] = makeVertex(x,            y,            z + cubeSize, r, g, b, a);
+                verts[v++] = makeVertex(x,            y + cubeSize, z + cubeSize, r, g, b, a);
+                verts[v++] = makeVertex(x,            y + cubeSize, z           , r, g, b, a);
 
                 // Право
-                verts[v++] = VBOVertex{x + cubeSize, y,            z           , r, g, b, a};
-                verts[v++] = VBOVertex{x + cubeSize, y + cubeSize, z           , r, g, b, a};
-                verts[v++] = VBOVertex{x + cubeSize, y + cubeSize, z + cubeSize, r, g, b, a};
-                verts[v++] = VBOVertex{x + cubeSize, y,            z + cubeSize, r, g, b, a};
+                verts[v++] = makeVertex(x + cubeSize, y,            z           , r, g, b, a);
+                verts[v++] = makeVertex(x + cubeSize, y + cubeSize, z           , r, g, b, a);
+                verts[v++] = makeVertex(x + cubeSize, y + cubeSize, z + cubeSize, r, g, b, a);
+                verts[v++] = makeVertex(x + cubeSize, y,            z + cubeSize, r, g, b, a);
             }
         }
     }
@@ -285,86 +296,100 @@ void kernelUpdateVBO(VBOVertex *verts, uchar *data, uint xSize, uint ySize, uint
 
 void cudaInitGrid(Grid *g)
 {
-    dim3 blocks(
-        ceil(g->xSize / float(threads.x)),
-        ceil(g->ySize / float(threads.y)),
-        ceil(g->zSize / float(threads.z))
-    );
+    dim3 blocks, threads;
+    switch (g->dimension)
+    {
+        case DIM_1: blocks = blocks_1d; threads = threads_1d; break;
+        case DIM_2: blocks = blocks_2d; threads = threads_2d; break;
+        case DIM_3: blocks = blocks_3d; threads = threads_3d; break;
+    }
+
+    uint cudaSize = blocks.x * blocks.y * blocks.z * threads.x * threads.y * threads.z;
+    cudaMalloc((void **)& (g->randomStates), sizeof(curandState) * cudaSize);
+    kernelInitRandomStates<<<blocks, threads>>>(g->randomStates);
 
     uint dataSize = g->xSize * g->ySize * g->zSize;
-    cudaMalloc((void **)& (g->randomStates), sizeof(curandState) * dataSize);
     cudaMalloc((void **)& (g->deviceMatrix), sizeof(uchar) * dataSize);
-
-    kernelInitRandomStates<<<blocks, threads>>>(g->randomStates, g->xSize, g->ySize, g->zSize);
     kernelInitGrid<<<blocks, threads>>>(g->deviceMatrix, g->randomStates, g->xSize, g->ySize, g->zSize);
 }
 
 void cudaFreeGrid(Grid *g)
 {
-    if (g->randomStates != NULL) cudaFree(g->randomStates);
-    if (g->deviceMatrix != NULL) cudaFree(g->deviceMatrix);
+    if (g->randomStates != NULL)
+    {
+        cudaFree(g->randomStates);
+        g->randomStates = NULL;
+    }
+
+    if (g->deviceMatrix != NULL)
+    {
+        cudaFree(g->deviceMatrix);
+        g->deviceMatrix = NULL;
+    }
 }
 
 void cudaAlgorithmStep(Grid *g, uint algorithmSteps)
 {
-    dim3 blocks(
-        ceil(g->xSize / float(threads.x)),
-        ceil(g->ySize / float(threads.y)),
-        ceil(g->zSize / float(threads.z))
-    );
+    dim3 blocks, threads;
+    switch (g->dimension)
+    {
+        case DIM_1: blocks = blocks_1d; threads = threads_1d; break;
+        case DIM_2: blocks = blocks_2d; threads = threads_2d; break;
+        case DIM_3: blocks = blocks_3d; threads = threads_3d; break;
+    }
 
     for (uint i = 0; i < algorithmSteps; i++)
     {
-        kernelAlgorithm<<<blocks, threads>>>(
-            g->deviceMatrix, g->randomStates,
-            g->dimension, g->xSize, g->ySize, g->zSize,
-            g->interactionEnergy, g->externalField, g->interactionRadius, g->temperature, false
-        );
-
-        kernelAlgorithm<<<blocks, threads>>>(
-            g->deviceMatrix, g->randomStates,
-            g->dimension, g->xSize, g->ySize, g->zSize,
-            g->interactionEnergy, g->externalField, g->interactionRadius, g->temperature, true
-        );
+        for (int iterx = 0; iterx <= g->interactionRadius; iterx++)
+        {
+            for (int itery = 0; itery <= g->interactionRadius; itery++)
+            {
+                for (int iterz = 0; iterz <= g->interactionRadius; iterz++)
+                {
+                    kernelAlgorithm<<<blocks, threads>>>(
+                        g->deviceMatrix, g->randomStates,
+                        g->dimension, g->xSize, g->ySize, g->zSize,
+                        g->interactionEnergy, g->externalField, g->interactionRadius, g->temperature,
+                        iterx, itery, iterz
+                    );
+                }
+            }
+        }
     }
 }
 
-void cudaInitVBO(Grid *g, struct cudaGraphicsResource **cuda_resource, float percentOfCube)
+void cudaInitVBO(Grid *g, struct cudaGraphicsResource **cuda_resource, int percentOfCube)
 {
-    dim3 blocks(
-        ceil(g->xSize / float(threads.x)),
-        ceil(g->ySize / float(threads.y)),
-        ceil(g->zSize / float(threads.z))
-    );
+    dim3 blocks, threads;
+    switch (g->dimension)
+    {
+        case DIM_1: blocks = blocks_1d; threads = threads_1d; break;
+        case DIM_2: blocks = blocks_2d; threads = threads_2d; break;
+        case DIM_3: blocks = blocks_3d; threads = threads_3d; break;
+    }
 
-    // Map buffer object
     VBOVertex *dev_ptr;
     size_t num_bytes;
     cudaGraphicsMapResources(1, cuda_resource, 0);
     cudaGraphicsResourceGetMappedPointer((void **)&dev_ptr, &num_bytes, *cuda_resource);
-
     kernelInitVBO<<<blocks, threads>>>(dev_ptr, g->deviceMatrix, g->xSize, g->ySize, g->zSize, percentOfCube);
-
-    // Unmap buffer object
     cudaGraphicsUnmapResources(1, cuda_resource, 0);
 }
 
 void cudaUpdateVBO(Grid *g, struct cudaGraphicsResource **cuda_resource)
 {
-    dim3 blocks(
-        ceil(g->xSize / float(threads.x)),
-        ceil(g->ySize / float(threads.y)),
-        ceil(g->zSize / float(threads.z))
-    );
+    dim3 blocks, threads;
+    switch (g->dimension)
+    {
+        case DIM_1: blocks = blocks_1d; threads = threads_1d; break;
+        case DIM_2: blocks = blocks_2d; threads = threads_2d; break;
+        case DIM_3: blocks = blocks_3d; threads = threads_3d; break;
+    }
 
-    // Map buffer object
     VBOVertex *dev_ptr;
     size_t num_bytes;
     cudaGraphicsMapResources(1, cuda_resource, 0);
     cudaGraphicsResourceGetMappedPointer((void **)&dev_ptr, &num_bytes, *cuda_resource);
-
     kernelUpdateVBO<<<blocks, threads>>>(dev_ptr, g->deviceMatrix, g->xSize, g->ySize, g->zSize);
-
-    // Unmap buffer object
     cudaGraphicsUnmapResources(1, cuda_resource, 0);
 }
