@@ -197,6 +197,9 @@ void OGLWidget::drawFigure()
     glVertexPointer(3, GL_FLOAT, 16, (void *) 0);
     glColorPointer(4, GL_UNSIGNED_BYTE, 16, (void *) 12);
 
+//    glVertexPointer(3, GL_HALF_FLOAT, 10, (void *) 0);
+//    glColorPointer(4, GL_UNSIGNED_BYTE, 10, (void *) 6);
+
     glDrawArrays(GL_QUADS, 0, this->grid.xSize * this->grid.ySize * this->grid.zSize * 24);
 }
 

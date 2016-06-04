@@ -13,7 +13,6 @@ Widget::Widget(QWidget *parent) : QWidget(parent), ui(new Ui::Widget)
     connect(&(this->watcher), &QFutureWatcher<void>::finished, this, &Widget::check);
 
     this->grid.randomStates = NULL;
-    this->grid.tempDeviceMatrix = NULL;
     this->grid.deviceMatrix = NULL;
 
     this->state = 0;

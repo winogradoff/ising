@@ -20,7 +20,6 @@ struct Grid
     double temperature; // температура
 
     curandState *randomStates; // состояния генераторов случайных чисел CUDA
-    uchar *tempDeviceMatrix;
     uchar *deviceMatrix; // решётка на GPU
 };
 
