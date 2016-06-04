@@ -1,8 +1,14 @@
 #include <cstdio>
 
 #include <cuda.h>
+
+// cuRAND
 #include <curand.h>
 #include <curand_kernel.h>
+
+// Thrust
+#include <thrust/device_vector.h>
+#include <thrust/reduce.h>
 
 #include "types.h"
 #include "grid.h"
@@ -64,7 +70,7 @@ __device__
 VBOVertex makeVertex(float x, float y, float z, uchar r, uchar g, uchar b, uchar a)
 {
     return VBOVertex{x, y, z, r, g, b, a};
-//     VBOVertex{floatToHalf(x), floatToHalf(y), floatToHalf(z), r, g, b, a};
+//    return VBOVertex{floatToHalf(x), floatToHalf(y), floatToHalf(z), r, g, b, a};
 }
 
 __global__
@@ -123,15 +129,16 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
     uint gridOffsety = offsety * (interactionRadius + 1);
     uint gridOffsetz = offsetz * (interactionRadius + 1);
 
-    int radiusX = interactionRadius;
-    int radiusY = interactionRadius;
-    int radiusZ = interactionRadius;
+    int index, radiusX, radiusY, radiusZ;
+    uchar spinValue;
+    uint xx, yy, zz;
+    double gridSpinEnergy, dist, probplus, probminus, probability;
 
+    radiusX = radiusY = radiusZ = interactionRadius;
     switch (dimension)
     {
         case DIM_1: radiusY = radiusZ = 0; break;
         case DIM_2: radiusZ = 0; break;
-        case DIM_3: break;
     }
 
     for (uint i = idx + idx*interactionRadius + iterx; i < xSize; i += gridOffsetx)
@@ -140,22 +147,28 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
         {
             for (uint k = idz + idz*interactionRadius + iterz; k < zSize; k += gridOffsetz)
             {
-                int index = gridIndex(i, j, k);
+                index = gridIndex(i, j, k);
 
-                double gridSpinEnergy = externalField;
+                spinValue = data[index] - 1;
+
+                // Пропустить, если немагнитная частица
+                if (spinValue == 0) continue;
+
+                gridSpinEnergy = externalField;
+
                 for (int x = i - radiusX; x <= i + radiusX; x++)
                 {
                     for (int y = j - radiusY; y <= j + radiusY; y++)
                     {
                         for (int z = k - radiusZ; z <= k + radiusZ; z++)
                         {
-                            uint xx = (xSize + x) % xSize;
-                            uint yy = (ySize + y) % ySize;
-                            uint zz = (zSize + z) % zSize;
+                            xx = (xSize + x) % xSize;
+                            yy = (ySize + y) % ySize;
+                            zz = (zSize + z) % zSize;
 
                             if (xx == i && yy == j && zz == k) continue;
 
-                            double dist = gridDistantion(i, j, k, x, y, z);
+                            dist = gridDistantion(i, j, k, x, y, z);
 
                             if (dist <= interactionRadius)
                             {
@@ -166,10 +179,9 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
                     }
                 }
 
-                double expValue = exp(gridSpinEnergy / temperature);
-                double probplus  = expValue;
-                double probminus = 1.0 / expValue;
-                double probability = probplus / (probplus + probminus);
+                probplus  = exp(gridSpinEnergy / temperature);
+                probminus = 1.0 / probplus;
+                probability = probplus / (probplus + probminus);
 
                 if (curand_uniform(rndState) > probability)
                 {
@@ -367,6 +379,15 @@ void cudaAlgorithmStep(Grid *g, uint algorithmSteps)
             }
         }
     }
+}
+
+long cudaMagnetization(Grid *g)
+{
+    long sum = 0;
+    uint dataSize = g->xSize * g->ySize * g->zSize;
+    thrust::device_ptr<uchar> ptr(g->deviceMatrix);
+    sum = thrust::reduce(ptr, ptr + dataSize, sum, thrust::plus<long>());
+    return sum;
 }
 
 void cudaInitVBO(Grid *g, struct cudaGraphicsResource **cuda_resource, int percentOfCube)

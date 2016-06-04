@@ -27,6 +27,7 @@ struct Grid
 void cudaInitGrid(Grid *g);
 void cudaFreeGrid(Grid *g);
 void cudaAlgorithmStep(Grid *g, uint algorithmSteps);
+long cudaMagnetization(Grid *g);
 void cudaInitVBO(Grid *g, struct cudaGraphicsResource **cuda_resource, int percentOfCube);
 void cudaUpdateVBO(Grid *g, struct cudaGraphicsResource **cuda_resource);
 
