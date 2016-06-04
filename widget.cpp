@@ -219,6 +219,11 @@ void Widget::check()
 {
     if(this->state == 1)
     {
+//        double gridSize = this->grid.xSize * this->grid.ySize * this->grid.zSize;
+//        double m = cudaMagnetization(&(this->grid)) / gridSize;
+//        double e = cudaEnergy(&(this->grid)) / gridSize;
+//        qDebug() << "m = " << m << ", e = " << e;
+
         this->updateImage();
         this->updatePlots();
         this->run();

@@ -31,6 +31,8 @@ __constant__ double externalField;
 __constant__ int interactionRadius;
 __constant__ double temperature;
 
+double *tempMatrix;
+
 __device__
 uint linearIndex(uint iSize, uint jSize, uint kSize, uint i, uint j, uint k)
 {    
@@ -197,6 +199,90 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
 }
 
 __global__
+void kernelMagnetization(uchar *data, double *result)
+{
+    uint idx = blockIdx.x * blockDim.x + threadIdx.x;
+    uint idy = blockIdx.y * blockDim.y + threadIdx.y;
+    uint idz = blockIdx.z * blockDim.z + threadIdx.z;
+    uint offsetx = gridDim.x * blockDim.x;
+    uint offsety = gridDim.y * blockDim.y;
+    uint offsetz = gridDim.z * blockDim.z;
+
+    for (uint i = idx; i < xSize; i += offsetx)
+    {
+        for (uint j = idy; j < ySize; j += offsety)
+        {
+            for (uint k = idz; k < zSize; k += offsetz)
+            {
+                int index = gridIndex(i, j, k);
+                result[index] = ((double) data[index]) - 1.0;
+            }
+        }
+    }
+}
+
+__global__
+void kernelEnergy(uchar *data, double *result)
+{
+    uint idx = blockIdx.x * blockDim.x + threadIdx.x;
+    uint idy = blockIdx.y * blockDim.y + threadIdx.y;
+    uint idz = blockIdx.z * blockDim.z + threadIdx.z;
+    uint offsetx = gridDim.x * blockDim.x;
+    uint offsety = gridDim.y * blockDim.y;
+    uint offsetz = gridDim.z * blockDim.z;
+
+    int index, radiusX, radiusY, radiusZ;
+    uint xx, yy, zz;
+    double spinValue, dist, energy;
+
+    radiusX = radiusY = radiusZ = interactionRadius;
+    switch (dimension)
+    {
+        case DIM_1: radiusY = radiusZ = 0; break;
+        case DIM_2: radiusZ = 0; break;
+    }
+
+    for (uint i = idx; i < xSize; i += offsetx)
+    {
+        for (uint j = idy; j < ySize; j += offsety)
+        {
+            for (uint k = idz; k < zSize; k += offsetz)
+            {
+                index = gridIndex(i, j, k);
+
+                energy = 0.0;
+                spinValue = ((double) data[index]) - 1.0;
+
+                for (int x = i; x <= i + radiusX; x++)
+                {
+                    for (int y = j; y <= j + radiusY; y++)
+                    {
+                        for (int z = k; z <= k + radiusZ; z++)
+                        {
+                            xx = (xSize + x) % xSize;
+                            yy = (ySize + y) % ySize;
+                            zz = (zSize + z) % zSize;
+
+                            if (xx == i && yy == j && zz == k) continue;
+
+                            dist = gridDistantion(i, j, k, x, y, z);
+
+                            if (dist <= interactionRadius)
+                            {
+                                energy += (((double) data[gridIndex(xx, yy, zz)]) - 1)
+                                          * gridInteractionPotential(dist);
+                            }
+                        }
+                    }
+                }
+
+                result[index] = -spinValue * (energy * interactionEnergy + externalField);
+            }
+        }
+    }
+}
+
+__global__
 void kernelInitVBO(VBOVertex *verts, uchar *data, int percentOfCube)
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -333,11 +419,12 @@ void cudaInitGrid(Grid *g)
     }
 
     uint cudaSize = blocks.x * blocks.y * blocks.z * threads.x * threads.y * threads.z;
-    cudaMalloc((void **)& (g->randomStates), sizeof(curandState) * cudaSize);
+    cudaMalloc((void **) &(g->randomStates), sizeof(curandState) * cudaSize);
     kernelInitRandomStates<<<blocks, threads>>>(g->randomStates);
 
     uint dataSize = g->xSize * g->ySize * g->zSize;
-    cudaMalloc((void **)& (g->deviceMatrix), sizeof(uchar) * dataSize);
+    cudaMalloc((void **) &(g->deviceMatrix), sizeof(uchar) * dataSize);
+    cudaMalloc((void **) &tempMatrix, sizeof(uchar) * dataSize);
     kernelInitGrid<<<blocks, threads>>>(g->deviceMatrix, g->randomStates);
 }
 
@@ -353,6 +440,12 @@ void cudaFreeGrid(Grid *g)
     {
         cudaFree(g->deviceMatrix);
         g->deviceMatrix = NULL;
+    }
+
+    if (tempMatrix != NULL)
+    {
+        cudaFree(tempMatrix);
+        tempMatrix = NULL;
     }
 }
 
@@ -381,12 +474,41 @@ void cudaAlgorithmStep(Grid *g, uint algorithmSteps)
     }
 }
 
-long cudaMagnetization(Grid *g)
+double cudaMagnetization(Grid *g)
 {
-    long sum = 0;
+    dim3 blocks, threads;
+    switch (g->dimension)
+    {
+        case DIM_1: blocks = blocks_1d; threads = threads_1d; break;
+        case DIM_2: blocks = blocks_2d; threads = threads_2d; break;
+        case DIM_3: blocks = blocks_3d; threads = threads_3d; break;
+    }
+
+    kernelMagnetization<<<blocks, threads>>>(g->deviceMatrix, tempMatrix);
+
+    double sum = 0.0;
     uint dataSize = g->xSize * g->ySize * g->zSize;
-    thrust::device_ptr<uchar> ptr(g->deviceMatrix);
-    sum = thrust::reduce(ptr, ptr + dataSize, sum, thrust::plus<long>());
+    thrust::device_ptr<double> ptr(tempMatrix);
+    sum = thrust::reduce(ptr, ptr + dataSize, sum, thrust::plus<double>());
+    return sum;
+}
+
+double cudaEnergy(Grid *g)
+{
+    dim3 blocks, threads;
+    switch (g->dimension)
+    {
+        case DIM_1: blocks = blocks_1d; threads = threads_1d; break;
+        case DIM_2: blocks = blocks_2d; threads = threads_2d; break;
+        case DIM_3: blocks = blocks_3d; threads = threads_3d; break;
+    }
+
+    kernelEnergy<<<blocks, threads>>>(g->deviceMatrix, tempMatrix);
+
+    double sum = 0.0;
+    uint dataSize = g->xSize * g->ySize * g->zSize;
+    thrust::device_ptr<double> ptr(tempMatrix);
+    sum = thrust::reduce(ptr, ptr + dataSize, sum, thrust::plus<double>());
     return sum;
 }
 
