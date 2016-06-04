@@ -22,6 +22,8 @@ dim3 threads_2d(32, 32, 1);
 dim3 blocks_3d(4, 8, 8);
 dim3 threads_3d(16, 8, 8);
 
+dim3 blocks, threads;
+
 __constant__ DimensionEnum dimension;
 __constant__ uint xSize;
 __constant__ uint ySize;
@@ -134,7 +136,7 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
     int index, radiusX, radiusY, radiusZ;
     uchar spinValue;
     uint xx, yy, zz;
-    double gridSpinEnergy, dist, probplus, probminus, probability;
+    double gridSpinEnergy, dist, expValue, probability;
 
     radiusX = radiusY = radiusZ = interactionRadius;
     switch (dimension)
@@ -143,14 +145,13 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
         case DIM_2: radiusZ = 0; break;
     }
 
-    for (uint i = idx + idx*interactionRadius + iterx; i < xSize; i += gridOffsetx)
+    for (uint i = idx + idx * interactionRadius + iterx; i < xSize; i += gridOffsetx)
     {
-        for (uint j = idy + idy*interactionRadius + itery; j < ySize; j += gridOffsety)
+        for (uint j = idy + idy * interactionRadius + itery; j < ySize; j += gridOffsety)
         {
-            for (uint k = idz + idz*interactionRadius + iterz; k < zSize; k += gridOffsetz)
+            for (uint k = idz + idz * interactionRadius + iterz; k < zSize; k += gridOffsetz)
             {
                 index = gridIndex(i, j, k);
-
                 spinValue = data[index] - 1;
 
                 // Пропустить, если немагнитная частица
@@ -181,9 +182,8 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
                     }
                 }
 
-                probplus  = exp(gridSpinEnergy / temperature);
-                probminus = 1.0 / probplus;
-                probability = probplus / (probplus + probminus);
+                expValue  = exp(gridSpinEnergy / temperature);
+                probability = expValue / (expValue + 1.0 / expValue);
 
                 if (curand_uniform(rndState) > probability)
                 {
@@ -410,7 +410,6 @@ void cudaInitGrid(Grid *g)
     cudaMemcpyToSymbol((const void *) &interactionRadius, &(g->interactionRadius), sizeof(int));
     cudaMemcpyToSymbol((const void *) &temperature,       &(g->temperature),       sizeof(double));
 
-    dim3 blocks, threads;
     switch (g->dimension)
     {
         case DIM_1: blocks = blocks_1d; threads = threads_1d; break;
@@ -451,14 +450,6 @@ void cudaFreeGrid(Grid *g)
 
 void cudaAlgorithmStep(Grid *g, uint algorithmSteps)
 {
-    dim3 blocks, threads;
-    switch (g->dimension)
-    {
-        case DIM_1: blocks = blocks_1d; threads = threads_1d; break;
-        case DIM_2: blocks = blocks_2d; threads = threads_2d; break;
-        case DIM_3: blocks = blocks_3d; threads = threads_3d; break;
-    }
-
     for (uint i = 0; i < algorithmSteps; i++)
     {
         for (int iterx = 0; iterx <= g->interactionRadius; iterx++)
@@ -476,16 +467,7 @@ void cudaAlgorithmStep(Grid *g, uint algorithmSteps)
 
 double cudaMagnetization(Grid *g)
 {
-    dim3 blocks, threads;
-    switch (g->dimension)
-    {
-        case DIM_1: blocks = blocks_1d; threads = threads_1d; break;
-        case DIM_2: blocks = blocks_2d; threads = threads_2d; break;
-        case DIM_3: blocks = blocks_3d; threads = threads_3d; break;
-    }
-
     kernelMagnetization<<<blocks, threads>>>(g->deviceMatrix, tempMatrix);
-
     double sum = 0.0;
     uint dataSize = g->xSize * g->ySize * g->zSize;
     thrust::device_ptr<double> ptr(tempMatrix);
@@ -495,16 +477,7 @@ double cudaMagnetization(Grid *g)
 
 double cudaEnergy(Grid *g)
 {
-    dim3 blocks, threads;
-    switch (g->dimension)
-    {
-        case DIM_1: blocks = blocks_1d; threads = threads_1d; break;
-        case DIM_2: blocks = blocks_2d; threads = threads_2d; break;
-        case DIM_3: blocks = blocks_3d; threads = threads_3d; break;
-    }
-
     kernelEnergy<<<blocks, threads>>>(g->deviceMatrix, tempMatrix);
-
     double sum = 0.0;
     uint dataSize = g->xSize * g->ySize * g->zSize;
     thrust::device_ptr<double> ptr(tempMatrix);
@@ -514,14 +487,6 @@ double cudaEnergy(Grid *g)
 
 void cudaInitVBO(Grid *g, struct cudaGraphicsResource **cuda_resource, int percentOfCube)
 {
-    dim3 blocks, threads;
-    switch (g->dimension)
-    {
-        case DIM_1: blocks = blocks_1d; threads = threads_1d; break;
-        case DIM_2: blocks = blocks_2d; threads = threads_2d; break;
-        case DIM_3: blocks = blocks_3d; threads = threads_3d; break;
-    }
-
     VBOVertex *dev_ptr;
     size_t num_bytes;
     cudaGraphicsMapResources(1, cuda_resource, 0);
@@ -532,14 +497,6 @@ void cudaInitVBO(Grid *g, struct cudaGraphicsResource **cuda_resource, int perce
 
 void cudaUpdateVBO(Grid *g, struct cudaGraphicsResource **cuda_resource)
 {
-    dim3 blocks, threads;
-    switch (g->dimension)
-    {
-        case DIM_1: blocks = blocks_1d; threads = threads_1d; break;
-        case DIM_2: blocks = blocks_2d; threads = threads_2d; break;
-        case DIM_3: blocks = blocks_3d; threads = threads_3d; break;
-    }
-
     VBOVertex *dev_ptr;
     size_t num_bytes;
     cudaGraphicsMapResources(1, cuda_resource, 0);
