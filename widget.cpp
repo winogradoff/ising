@@ -28,8 +28,8 @@ Widget::Widget(QWidget* parent)
 
 Widget::~Widget()
 {
-    delete ui;
     this->watcher.waitForFinished();
+    delete ui;
 }
 
 void Widget::on_dimensions_currentIndexChanged(int)
@@ -188,13 +188,20 @@ void Widget::updatePlots()
     }
 }
 
-void Widget::closeEventVisualWGT(QCloseEvent*)
+void Widget::closeEvent(QCloseEvent*)
 {
     if (VisualWGT != NULL)
     {
         VisualWGT->close();
         delete VisualWGT;
         VisualWGT = NULL;
+    }
+
+    if (PlotWGT != NULL)
+    {
+        PlotWGT->close();
+        delete PlotWGT;
+        PlotWGT = NULL;
     }
 }
 
@@ -217,16 +224,6 @@ void Widget::on_visualButton_clicked()
         VisualWGT = NULL;
         ui->visualButton->setEnabled(true);
         ui->plotButton->setEnabled(true);
-    }
-}
-
-void Widget::closeEventPlotWGT(QCloseEvent*)
-{
-    if (PlotWGT != NULL)
-    {
-        PlotWGT->close();
-        delete PlotWGT;
-        PlotWGT = NULL;
     }
 }
 

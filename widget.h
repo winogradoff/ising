@@ -43,15 +43,13 @@ private:
     void updatePlots();
 
 protected:
-    void closeEventVisualWGT(QCloseEvent* event);
-    void closeEventPlotWGT(QCloseEvent* event);
+    void closeEvent(QCloseEvent* event);
 
 public slots:
     void on_newButton_clicked();
     void on_startStopButton_clicked();
     void on_dimensions_currentIndexChanged(int index);
     void on_cubeSize_valueChanged(int value);
-
     void check();
 
 private slots:
