@@ -145,11 +145,11 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
         case DIM_2: radiusZ = 0; break;
     }
 
-    for (uint i = idx + idx * interactionRadius + iterx; i < xSize; i += gridOffsetx)
+    for (int i = idx + idx * interactionRadius + iterx; i < xSize; i += gridOffsetx)
     {
-        for (uint j = idy + idy * interactionRadius + itery; j < ySize; j += gridOffsety)
+        for (int j = idy + idy * interactionRadius + itery; j < ySize; j += gridOffsety)
         {
-            for (uint k = idz + idz * interactionRadius + iterz; k < zSize; k += gridOffsetz)
+            for (int k = idz + idz * interactionRadius + iterz; k < zSize; k += gridOffsetz)
             {
                 index = gridIndex(i, j, k);
                 spinValue = data[index] - 1;
@@ -159,11 +159,11 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
 
                 gridSpinEnergy = externalField;
 
-                for (int x = (int) i - radiusX; x <= (int) i + radiusX; x++)
+                for (int x = i - radiusX; x <= i + radiusX; x++)
                 {
-                    for (int y = (int) j - radiusY; y <= (int) j + radiusY; y++)
+                    for (int y = j - radiusY; y <= j + radiusY; y++)
                     {
-                        for (int z = (int) k - radiusZ; z <= (int) k + radiusZ; z++)
+                        for (int z = k - radiusZ; z <= k + radiusZ; z++)
                         {
                             xx = (xSize + x) % xSize;
                             yy = (ySize + y) % ySize;
@@ -293,10 +293,9 @@ void kernelInitVBO(uchar *data, VBOVertex *vertices, uint *indices, int percentO
     uint offsetz = gridDim.z * blockDim.z;
 
     float gridSize = 5.0f;
-
-    // TODO
-    float cubeSize = (gridSize / xSize) * (0.01f * percentOfCube);
-    float cubeSpace = (gridSize / xSize) * (0.01f * (100 - percentOfCube));
+    uint maxSize = max(xSize, max(ySize, zSize));
+    float cubeSize = (gridSize / maxSize) * (0.01f * percentOfCube);
+    float cubeSpace = (gridSize / maxSize) * (0.01f * (100 - percentOfCube));
 
     float lengthX = xSize * cubeSize + (xSize - 1) * cubeSpace;
     float lengthY = ySize * cubeSize + (ySize - 1) * cubeSpace;
@@ -338,40 +337,28 @@ void kernelInitVBO(uchar *data, VBOVertex *vertices, uint *indices, int percentO
                 uint ipos = index * 24;
 
                 // Перед
-                indices[ipos++] = vpos + 0;
-                indices[ipos++] = vpos + 4;
-                indices[ipos++] = vpos + 5;
-                indices[ipos++] = vpos + 1;
+                indices[ipos++] = vpos + 0; indices[ipos++] = vpos + 4;
+                indices[ipos++] = vpos + 5; indices[ipos++] = vpos + 1;
 
                 // Зад
-                indices[ipos++] = vpos + 2;
-                indices[ipos++] = vpos + 3;
-                indices[ipos++] = vpos + 7;
-                indices[ipos++] = vpos + 6;
+                indices[ipos++] = vpos + 2; indices[ipos++] = vpos + 3;
+                indices[ipos++] = vpos + 7; indices[ipos++] = vpos + 6;
 
                 // Верх
-                indices[ipos++] = vpos + 1;
-                indices[ipos++] = vpos + 5;
-                indices[ipos++] = vpos + 7;
-                indices[ipos++] = vpos + 3;
+                indices[ipos++] = vpos + 1; indices[ipos++] = vpos + 5;
+                indices[ipos++] = vpos + 7; indices[ipos++] = vpos + 3;
 
                 // Низ
-                indices[ipos++] = vpos + 0;
-                indices[ipos++] = vpos + 2;
-                indices[ipos++] = vpos + 6;
-                indices[ipos++] = vpos + 4;
+                indices[ipos++] = vpos + 0; indices[ipos++] = vpos + 2;
+                indices[ipos++] = vpos + 6; indices[ipos++] = vpos + 4;
 
                 // Лево
-                indices[ipos++] = vpos + 0;
-                indices[ipos++] = vpos + 1;
-                indices[ipos++] = vpos + 3;
-                indices[ipos++] = vpos + 2;
+                indices[ipos++] = vpos + 0; indices[ipos++] = vpos + 1;
+                indices[ipos++] = vpos + 3; indices[ipos++] = vpos + 2;
 
                 // Право
-                indices[ipos++] = vpos + 4;
-                indices[ipos++] = vpos + 6;
-                indices[ipos++] = vpos + 7;
-                indices[ipos++] = vpos + 5;
+                indices[ipos++] = vpos + 4; indices[ipos++] = vpos + 6;
+                indices[ipos++] = vpos + 7; indices[ipos++] = vpos + 5;
             }
         }
     }
