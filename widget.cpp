@@ -173,7 +173,6 @@ void Widget::check()
 
 void Widget::updateVisual()
 {
-    // Update OpenGL widget
     if (this->VisualWGT != NULL)
     {
         this->VisualWGT->OpenGLWGT->updateVBO();
@@ -183,7 +182,6 @@ void Widget::updateVisual()
 
 void Widget::updatePlots()
 {
-    // Update Plot widget
     if (this->PlotWGT != NULL)
     {
         this->PlotWGT->updatePlots(cudaEnergy(&(this->grid)), cudaMagnetization(&(this->grid)));
@@ -206,12 +204,9 @@ void Widget::on_visualButton_clicked()
     {
         ui->visualButton->setEnabled(false);
         ui->plotButton->setEnabled(false);
-
         VisualWGT = new VisualWidget();
-        //        VisualWGT->setWindowModality(Qt::WindowModality::ApplicationModal);
         VisualWGT->show();
         connect(VisualWGT, SIGNAL(closedSignal()), this, SLOT(on_visualButton_clicked()));
-        //        this->ui->visualButton->setChecked(true);
         this->VisualWGT->OpenGLWGT->setGrid(this->grid);
         this->VisualWGT->OpenGLWGT->setCubeSize((ui->cubeSize->value()));
         this->VisualWGT->OpenGLWGT->update();
@@ -220,8 +215,6 @@ void Widget::on_visualButton_clicked()
     {
         VisualWGT->close();
         VisualWGT = NULL;
-        //        this->ui->visualButton->setChecked(false);
-
         ui->visualButton->setEnabled(true);
         ui->plotButton->setEnabled(true);
     }
@@ -243,21 +236,16 @@ void Widget::on_plotButton_clicked()
     {
         ui->visualButton->setEnabled(false);
         ui->plotButton->setEnabled(false);
-
         PlotWGT = new PlotWidget();
         PlotWGT->setGrid(this->grid);
-        //        PlotWGT->setWindowModality(Qt::WindowModality::ApplicationModal);
         PlotWGT->show();
         connect(PlotWGT, SIGNAL(closedSignal()), this, SLOT(on_plotButton_clicked()));
-        // TODO
     }
     else if (PlotWGT != NULL)
     {
         PlotWGT->close();
         delete PlotWGT;
         PlotWGT = NULL;
-        this->ui->plotButton->setChecked(false);
-
         ui->visualButton->setEnabled(true);
         ui->plotButton->setEnabled(true);
     }
