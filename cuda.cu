@@ -159,11 +159,11 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
 
                 gridSpinEnergy = externalField;
 
-                for (int x = i - radiusX; x <= i + radiusX; x++)
+                for (int x = (int) i - radiusX; x <= (int) i + radiusX; x++)
                 {
-                    for (int y = j - radiusY; y <= j + radiusY; y++)
+                    for (int y = (int) j - radiusY; y <= (int) j + radiusY; y++)
                     {
-                        for (int z = k - radiusZ; z <= k + radiusZ; z++)
+                        for (int z = (int) k - radiusZ; z <= (int) k + radiusZ; z++)
                         {
                             xx = (xSize + x) % xSize;
                             yy = (ySize + y) % ySize;
