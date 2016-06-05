@@ -1,7 +1,10 @@
 #ifndef TYPES
 #define TYPES
 
+#define BUFFER_OFFSET(i) ((void*)(i))
+
 typedef unsigned char uchar;
+typedef unsigned short ushort;
 typedef unsigned int uint;
 
 enum DimensionEnum {DIM_1, DIM_2, DIM_3};

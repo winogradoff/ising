@@ -29,7 +29,18 @@ void cudaFreeGrid(Grid *g);
 void cudaAlgorithmStep(Grid *g, uint algorithmSteps);
 double cudaMagnetization(Grid *g);
 double cudaEnergy(Grid *g);
-void cudaInitVBO(Grid *g, struct cudaGraphicsResource **cuda_resource, int percentOfCube);
-void cudaUpdateVBO(Grid *g, struct cudaGraphicsResource **cuda_resource);
+
+void cudaInitVBO(
+    Grid *g,
+    struct cudaGraphicsResource **cudaVertexResource,
+    struct cudaGraphicsResource **cudaIndexResource,
+    int percentOfCube
+);
+
+void cudaUpdateVBO(
+    Grid *g,
+    struct cudaGraphicsResource **cudaVertexResource
+    // struct cudaGraphicsResource **cudaIndexResource,
+);
 
 #endif // GRID_H

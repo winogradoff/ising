@@ -283,7 +283,7 @@ void kernelEnergy(uchar *data, double *result)
 }
 
 __global__
-void kernelInitVBO(VBOVertex *verts, uchar *data, int percentOfCube)
+void kernelInitVBO(uchar *data, VBOVertex *vertices, uint *indices, int percentOfCube)
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -322,50 +322,63 @@ void kernelInitVBO(VBOVertex *verts, uchar *data, int percentOfCube)
                 float y = j * (cubeSize + cubeSpace) + 0.5f * (cubeSize - lengthY) - 0.5f * cubeSize;
                 float z = k * (cubeSize + cubeSpace) + 0.5f * (cubeSize - lengthZ) - 0.5f * cubeSize;
 
-                uint v = index * 24;
+                // 8 вершин куба
+                uint vpos = index * 8;
+
+                vertices[vpos + 0] = makeVertex(x,            y,            z           , r, g, b, a);
+                vertices[vpos + 1] = makeVertex(x,            y,            z + cubeSize, r, g, b, a);
+                vertices[vpos + 2] = makeVertex(x,            y + cubeSize, z           , r, g, b, a);
+                vertices[vpos + 3] = makeVertex(x,            y + cubeSize, z + cubeSize, r, g, b, a);
+                vertices[vpos + 4] = makeVertex(x + cubeSize, y,            z           , r, g, b, a);
+                vertices[vpos + 5] = makeVertex(x + cubeSize, y,            z + cubeSize, r, g, b, a);
+                vertices[vpos + 6] = makeVertex(x + cubeSize, y + cubeSize, z           , r, g, b, a);
+                vertices[vpos + 7] = makeVertex(x + cubeSize, y + cubeSize, z + cubeSize, r, g, b, a);
+
+                // 24 индекса для рисования GL_QUADS
+                uint ipos = index * 24;
 
                 // Перед
-                verts[v++] = makeVertex(x,            y,            z           , r, g, b, a);
-                verts[v++] = makeVertex(x + cubeSize, y,            z           , r, g, b, a);
-                verts[v++] = makeVertex(x + cubeSize, y,            z + cubeSize, r, g, b, a);
-                verts[v++] = makeVertex(x,            y,            z + cubeSize, r, g, b, a);
+                indices[ipos++] = vpos + 0;
+                indices[ipos++] = vpos + 4;
+                indices[ipos++] = vpos + 5;
+                indices[ipos++] = vpos + 1;
 
                 // Зад
-                verts[v++] = makeVertex(x,            y + cubeSize, z           , r, g, b, a);
-                verts[v++] = makeVertex(x,            y + cubeSize, z + cubeSize, r, g, b, a);
-                verts[v++] = makeVertex(x + cubeSize, y + cubeSize, z + cubeSize, r, g, b, a);
-                verts[v++] = makeVertex(x + cubeSize, y + cubeSize, z           , r, g, b, a);
+                indices[ipos++] = vpos + 2;
+                indices[ipos++] = vpos + 3;
+                indices[ipos++] = vpos + 7;
+                indices[ipos++] = vpos + 6;
 
                 // Верх
-                verts[v++] = makeVertex(x,            y,            z + cubeSize, r, g, b, a);
-                verts[v++] = makeVertex(x + cubeSize, y,            z + cubeSize, r, g, b, a);
-                verts[v++] = makeVertex(x + cubeSize, y + cubeSize, z + cubeSize, r, g, b, a);
-                verts[v++] = makeVertex(x,            y + cubeSize, z + cubeSize, r, g, b, a);
+                indices[ipos++] = vpos + 1;
+                indices[ipos++] = vpos + 5;
+                indices[ipos++] = vpos + 7;
+                indices[ipos++] = vpos + 3;
 
                 // Низ
-                verts[v++] = makeVertex(x,            y,            z           , r, g, b, a);
-                verts[v++] = makeVertex(x,            y + cubeSize, z           , r, g, b, a);
-                verts[v++] = makeVertex(x + cubeSize, y + cubeSize, z           , r, g, b, a);
-                verts[v++] = makeVertex(x + cubeSize, y,            z           , r, g, b, a);
+                indices[ipos++] = vpos + 0;
+                indices[ipos++] = vpos + 2;
+                indices[ipos++] = vpos + 6;
+                indices[ipos++] = vpos + 4;
 
                 // Лево
-                verts[v++] = makeVertex(x,            y,            z           , r, g, b, a);
-                verts[v++] = makeVertex(x,            y,            z + cubeSize, r, g, b, a);
-                verts[v++] = makeVertex(x,            y + cubeSize, z + cubeSize, r, g, b, a);
-                verts[v++] = makeVertex(x,            y + cubeSize, z           , r, g, b, a);
+                indices[ipos++] = vpos + 0;
+                indices[ipos++] = vpos + 1;
+                indices[ipos++] = vpos + 3;
+                indices[ipos++] = vpos + 2;
 
                 // Право
-                verts[v++] = makeVertex(x + cubeSize, y,            z           , r, g, b, a);
-                verts[v++] = makeVertex(x + cubeSize, y + cubeSize, z           , r, g, b, a);
-                verts[v++] = makeVertex(x + cubeSize, y + cubeSize, z + cubeSize, r, g, b, a);
-                verts[v++] = makeVertex(x + cubeSize, y,            z + cubeSize, r, g, b, a);
+                indices[ipos++] = vpos + 4;
+                indices[ipos++] = vpos + 6;
+                indices[ipos++] = vpos + 7;
+                indices[ipos++] = vpos + 5;
             }
         }
     }
 }
 
 __global__
-void kernelUpdateVBO(VBOVertex *verts, uchar *data)
+void kernelUpdateVBO(uchar *data, VBOVertex *verts)
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -390,7 +403,7 @@ void kernelUpdateVBO(VBOVertex *verts, uchar *data)
                     case 2: r = 255; g = 0;   b = 0;   a = 0; break;
                 }
 
-                for (uint v = index * 24; v < index * 24 + 24; v++)
+                for (uint v = index * 8; v < index * 8 + 8; v++)
                 {
                     verts[v].r = r; verts[v].g = g; verts[v].b = b; verts[v].a = a;
                 }
@@ -485,22 +498,41 @@ double cudaEnergy(Grid *g)
     return sum;
 }
 
-void cudaInitVBO(Grid *g, struct cudaGraphicsResource **cuda_resource, int percentOfCube)
+void cudaInitVBO(
+        Grid *g,
+        struct cudaGraphicsResource **cudaVertexResource,
+        struct cudaGraphicsResource **cudaIndexResource,
+        int percentOfCube
+)
 {
-    VBOVertex *dev_ptr;
+    VBOVertex *vertices;
+    uint *indexes;
+
     size_t num_bytes;
-    cudaGraphicsMapResources(1, cuda_resource, 0);
-    cudaGraphicsResourceGetMappedPointer((void **) &dev_ptr, &num_bytes, *cuda_resource);
-    kernelInitVBO<<<blocks, threads>>>(dev_ptr, g->deviceMatrix, percentOfCube);
-    cudaGraphicsUnmapResources(1, cuda_resource, 0);
+
+    cudaGraphicsMapResources(1, cudaVertexResource, 0);
+    cudaGraphicsResourceGetMappedPointer((void **) &vertices, &num_bytes, *cudaVertexResource);
+    cudaGraphicsMapResources(1, cudaIndexResource, 0);
+    cudaGraphicsResourceGetMappedPointer((void **) &indexes, &num_bytes, *cudaIndexResource);
+
+    kernelInitVBO<<<blocks, threads>>>(g->deviceMatrix, vertices, indexes, percentOfCube);
+
+    cudaGraphicsUnmapResources(1, cudaVertexResource, 0);
+    cudaGraphicsUnmapResources(1, cudaIndexResource, 0);
 }
 
-void cudaUpdateVBO(Grid *g, struct cudaGraphicsResource **cuda_resource)
+void cudaUpdateVBO(
+        Grid *g,
+        struct cudaGraphicsResource **cudaVertexResource
+)
 {
-    VBOVertex *dev_ptr;
+    VBOVertex *vertices;
     size_t num_bytes;
-    cudaGraphicsMapResources(1, cuda_resource, 0);
-    cudaGraphicsResourceGetMappedPointer((void **) &dev_ptr, &num_bytes, *cuda_resource);
-    kernelUpdateVBO<<<blocks, threads>>>(dev_ptr, g->deviceMatrix);
-    cudaGraphicsUnmapResources(1, cuda_resource, 0);
+
+    cudaGraphicsMapResources(1, cudaVertexResource, 0);
+    cudaGraphicsResourceGetMappedPointer((void **) &vertices, &num_bytes, *cudaVertexResource);
+
+    kernelUpdateVBO<<<blocks, threads>>>(g->deviceMatrix, vertices);
+
+    cudaGraphicsUnmapResources(1, cudaVertexResource, 0);
 }

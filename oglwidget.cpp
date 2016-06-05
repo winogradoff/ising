@@ -2,13 +2,16 @@
 
 OGLWidget::OGLWidget(QWidget *parent) : QGLWidget(parent)
 {
+    this->glInitialized = false;
     this->xRot = 0.0;
     this->yRot = 0.0;
     this->zRot = 0.0;
-    this->vbo = 0;
-    this->cuda_resource = NULL;
-    this->glInitialized = false;
     this->viewerPosition = ViewerPosition{0.0, 0.0, 10.0};
+
+    this->VertexVBOID = 0;
+    this->IndexVBOID = 0;
+    this->cudaVertexResource = NULL;
+    this->cudaIndexResource = NULL;
 }
 
 OGLWidget::~OGLWidget()
@@ -18,38 +21,73 @@ OGLWidget::~OGLWidget()
 
 void OGLWidget::createVBO()
 {
-    // Создать VBO
-    glGenBuffers(1, &(this->vbo));
-    glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
+    uint size = this->grid.xSize * this->grid.ySize * this->grid.zSize;
 
-    // Выделить память (24 вершины на каждый куб)
-    uint size = this->grid.xSize * this->grid.ySize * this->grid.zSize * sizeof(VBOVertex) * 24;
+    // 8 реальных вершин на каждый куб
+    uint vertexSize = size * sizeof(VBOVertex) * 8;
 
-    glBufferData(GL_ARRAY_BUFFER, size, 0, GL_DYNAMIC_DRAW);
+    // 24 индекса вершин на каждый куб для рисования GL_QUADS
+    uint indexSize = size * sizeof(uint) * 24;
+
+    // Создать VBO для вершин
+    glGenBuffers(1, &(this->VertexVBOID));
+    glBindBuffer(GL_ARRAY_BUFFER, this->VertexVBOID);
+    glBufferData(GL_ARRAY_BUFFER, vertexSize, 0, GL_DYNAMIC_DRAW); // TODO
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    // Подключить VBO к CUDA
-    cudaGraphicsGLRegisterBuffer(&(this->cuda_resource), this->vbo, cudaGraphicsMapFlagsWriteDiscard);
+    // Создать VBO для индексов
+    glGenBuffers(1, &(this->IndexVBOID));
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->IndexVBOID);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexSize, 0, GL_DYNAMIC_DRAW); // TODO
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    // Подключить вершины и индексы к CUDA
+    cudaGraphicsGLRegisterBuffer(
+        &(this->cudaVertexResource),
+        this->VertexVBOID,
+        cudaGraphicsMapFlagsWriteDiscard
+    );
+    cudaGraphicsGLRegisterBuffer(
+        &(this->cudaIndexResource),
+        this->IndexVBOID,
+        cudaGraphicsMapFlagsWriteDiscard
+    );
 }
 
 void OGLWidget::updateVBO()
 {
-    if (this->vbo)
+    if (this->VertexVBOID)
     {
-        cudaUpdateVBO(&(this->grid), &(this->cuda_resource));
+        cudaUpdateVBO(&(this->grid), &(this->cudaVertexResource));
     }
 }
 
 void OGLWidget::deleteVBO()
 {
-    if (this->vbo)
+    if (this->cudaVertexResource != NULL)
     {
-        // Отключить VBO от CUDA и удалить
-        cudaGraphicsUnregisterResource(this->cuda_resource);
-        glBindBuffer(1, this->vbo);
-        glDeleteBuffers(1, &(this->vbo));
-        this->vbo = 0;
-        this->cuda_resource = NULL;
+        cudaGraphicsUnregisterResource(this->cudaVertexResource);
+        this->cudaVertexResource = NULL;
+    }
+
+    if (this->cudaIndexResource != NULL)
+    {
+        cudaGraphicsUnregisterResource(this->cudaIndexResource);
+        this->cudaIndexResource = NULL;
+    }
+
+    if (this->VertexVBOID)
+    {
+        glBindBuffer(1, this->VertexVBOID);
+        glDeleteBuffers(1, &(this->VertexVBOID));
+        this->VertexVBOID = 0;
+    }
+
+    if (this->IndexVBOID)
+    {
+        glBindBuffer(1, this->IndexVBOID);
+        glDeleteBuffers(1, &(this->IndexVBOID));
+        this->IndexVBOID = 0;
     }
 }
 
@@ -182,25 +220,49 @@ void OGLWidget::drawAxes()
 
 void OGLWidget::drawFigure()
 {
-    if (this->vbo == 0 && this->glInitialized)
+    if (this->VertexVBOID == 0 && this->glInitialized)
     {
         this->deleteVBO();
         this->createVBO();
-        cudaInitVBO(&(this->grid), &(this->cuda_resource), this->percentOfCube);
+        cudaInitVBO(
+            &(this->grid),
+            &(this->cudaVertexResource),
+            &(this->cudaIndexResource),
+            this->percentOfCube
+        );
         this->update();
     }
 
-    glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
+//    glBindBuffer(GL_ARRAY_BUFFER, this->VertexVBOID);
+//    glEnableClientState(GL_VERTEX_ARRAY);
+//    glEnableClientState(GL_COLOR_ARRAY);
+
+//    glVertexPointer(3, GL_FLOAT, 16, (void *) 0);
+//    glColorPointer(4, GL_UNSIGNED_BYTE, 16, (void *) 12);
+
+//    glDrawArrays(GL_QUADS, 0, this->grid.xSize * this->grid.ySize * this->grid.zSize * 24);
+
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
 
-    glVertexPointer(3, GL_FLOAT, 16, (void *) 0);
-    glColorPointer(4, GL_UNSIGNED_BYTE, 16, (void *) 12);
+    glBindBuffer(GL_ARRAY_BUFFER, this->VertexVBOID);
 
-//    glVertexPointer(3, GL_HALF_FLOAT, 10, (void *) 0);
-//    glColorPointer(4, GL_UNSIGNED_BYTE, 10, (void *) 6);
+    glVertexPointer(3, GL_FLOAT, sizeof(VBOVertex), BUFFER_OFFSET(0));
+    glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(VBOVertex), BUFFER_OFFSET(12));
 
-    glDrawArrays(GL_QUADS, 0, this->grid.xSize * this->grid.ySize * this->grid.zSize * 24);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->IndexVBOID);
+
+    glDrawElements(
+        GL_QUADS,
+        this->grid.xSize * this->grid.ySize * this->grid.zSize * 24,
+        GL_UNSIGNED_INT,
+        BUFFER_OFFSET(0)
+    );
+
+//    glDrawArrays(GL_QUADS, 0, this->grid.xSize * this->grid.ySize * this->grid.zSize * 24);
+
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
 }
 
 void OGLWidget::setGrid(Grid grid)
@@ -211,7 +273,12 @@ void OGLWidget::setGrid(Grid grid)
     {
         this->deleteVBO();
         this->createVBO();
-        cudaInitVBO(&(this->grid), &(this->cuda_resource), this->percentOfCube);
+        cudaInitVBO(
+            &(this->grid),
+            &(this->cudaVertexResource),
+            &(this->cudaIndexResource),
+            this->percentOfCube
+        );
     }
 }
 
@@ -219,9 +286,14 @@ void OGLWidget::setCubeSize(int value)
 {
     this->percentOfCube = value;
 
-    if (vbo)
+    if (this->VertexVBOID)
     {
-        cudaInitVBO(&(this->grid), &(this->cuda_resource), this->percentOfCube);
+        cudaInitVBO(
+            &(this->grid),
+            &(this->cudaVertexResource),
+            &(this->cudaIndexResource),
+            this->percentOfCube
+        );
     }
 }
 

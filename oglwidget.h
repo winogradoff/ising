@@ -26,8 +26,10 @@ public:
     void setCubeSize(int value);
 
     // Vertex Buffer Object <-> CUDA
-    GLuint vbo;
-    struct cudaGraphicsResource *cuda_resource;
+    GLuint VertexVBOID;
+    GLuint IndexVBOID;
+    struct cudaGraphicsResource *cudaVertexResource;
+    struct cudaGraphicsResource *cudaIndexResource;
     void createVBO();
     void deleteVBO();
     void updateVBO();
