@@ -436,7 +436,7 @@ void cudaInitGrid(Grid *g)
 
     uint dataSize = g->xSize * g->ySize * g->zSize;
     cudaMalloc((void **) &(g->deviceMatrix), sizeof(uchar) * dataSize);
-    cudaMalloc((void **) &tempMatrix, sizeof(uchar) * dataSize);
+    cudaMalloc((void **) &tempMatrix, sizeof(double) * dataSize);
     kernelInitGrid<<<blocks, threads>>>(g->deviceMatrix, g->randomStates);
 }
 

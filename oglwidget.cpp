@@ -259,8 +259,6 @@ void OGLWidget::drawFigure()
         BUFFER_OFFSET(0)
     );
 
-//    glDrawArrays(GL_QUADS, 0, this->grid.xSize * this->grid.ySize * this->grid.zSize * 24);
-
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_COLOR_ARRAY);
 }
