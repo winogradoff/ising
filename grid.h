@@ -19,28 +19,22 @@ struct Grid
     long nonmagneticParticles; // количество немагнитных частиц
     double temperature; // температура
 
-    curandState *randomStates; // состояния генераторов случайных чисел CUDA
-    uchar *deviceMatrix; // решётка на GPU
+    curandState* randomStates; // состояния генераторов случайных чисел CUDA
+    uchar* deviceMatrix; // решётка на GPU
 };
 
 // CUDA functions
-void cudaInitGrid(Grid *g);
-void cudaFreeGrid(Grid *g);
-void cudaAlgorithmStep(Grid *g, uint algorithmSteps);
-double cudaMagnetization(Grid *g);
-double cudaEnergy(Grid *g);
+void cudaInitGrid(Grid* g);
+void cudaFreeGrid(Grid* g);
+void cudaAlgorithmStep(Grid* g, uint algorithmSteps);
+double cudaMagnetization(Grid* g);
+double cudaEnergy(Grid* g);
 
-void cudaInitVBO(
-    Grid *g,
-    struct cudaGraphicsResource **cudaVertexResource,
-    struct cudaGraphicsResource **cudaIndexResource,
-    int percentOfCube
-);
+void cudaInitVBO(Grid* g, struct cudaGraphicsResource** cudaVertexResource,
+    struct cudaGraphicsResource** cudaIndexResource, int percentOfCube);
 
-void cudaUpdateVBO(
-    Grid *g,
-    struct cudaGraphicsResource **cudaVertexResource
+void cudaUpdateVBO(Grid* g, struct cudaGraphicsResource** cudaVertexResource
     // struct cudaGraphicsResource **cudaIndexResource,
-);
+    );
 
 #endif // GRID_H

@@ -19,7 +19,7 @@
 class OGLWidget : public QGLWidget, protected QOpenGLFunctions
 {
 public:
-    OGLWidget(QWidget *parent = 0);
+    OGLWidget(QWidget* parent = 0);
     ~OGLWidget();
     void setGrid(Grid grid);
 
@@ -28,8 +28,8 @@ public:
     // Vertex Buffer Object <-> CUDA
     GLuint VertexVBOID;
     GLuint IndexVBOID;
-    struct cudaGraphicsResource *cudaVertexResource;
-    struct cudaGraphicsResource *cudaIndexResource;
+    struct cudaGraphicsResource* cudaVertexResource;
+    struct cudaGraphicsResource* cudaIndexResource;
     void createVBO();
     void deleteVBO();
     void updateVBO();
@@ -48,10 +48,10 @@ protected:
     void initializeGL();
     void resizeGL(int w, int h);
     void paintGL();
-    void mousePressEvent( QMouseEvent * );
-    void mouseMoveEvent( QMouseEvent * );
-    void wheelEvent(QWheelEvent *event);
-    void keyPressEvent(QKeyEvent *event);
+    void mousePressEvent(QMouseEvent*);
+    void mouseMoveEvent(QMouseEvent*);
+    void wheelEvent(QWheelEvent* event);
+    void keyPressEvent(QKeyEvent* event);
 
 private:
     bool glInitialized;

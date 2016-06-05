@@ -1,4 +1,4 @@
-QT += core gui opengl widgets printsupport concurrent
+QT += widgets printsupport opengl concurrent
 
 TARGET = curs_visual
 TEMPLATE = app
@@ -7,21 +7,27 @@ HEADERS += widget.h \
     grid.h \
     qcustomplot.h \
     oglwidget.h \
-    types.h
+    types.h \
+    visualwidget.h \
+    plotwidget.h
 
-SOURCES += main.cpp\
+SOURCES += main.cpp \
     widget.cpp \
     qcustomplot.cpp \
-    oglwidget.cpp
+    oglwidget.cpp \
+    visualwidget.cpp \
+    plotwidget.cpp
 
-FORMS += widget.ui
+FORMS += widget.ui \
+    visualwidget.ui \
+    plotwidget.ui
 
 win32 {
     RC_ICONS = icon.ico
 }
 
 # With C++11 support
-CONFIG += c++11
+#CONFIG += c++11
 
 DESTDIR = release
 OBJECTS_DIR = release/obj
@@ -63,8 +69,7 @@ CONFIG(debug, debug|release) {
                       -c -o ${QMAKE_FILE_OUT} ${QMAKE_FILE_NAME}
     cuda_d.dependency_type = TYPE_C
     QMAKE_EXTRA_COMPILERS += cuda_d
-}
-else {
+} else {
     # Release mode
     cuda.input = CUDA_SOURCES
     cuda.output = $$CUDA_OBJECTS_DIR/${QMAKE_FILE_BASE}_cuda.obj

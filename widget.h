@@ -5,14 +5,14 @@
 #include <QtConcurrent/QtConcurrent>
 #include <QGraphicsScene>
 #include "grid.h"
-
-#define PLOT_SIZE 100
-//
+#include "visualwidget.h"
+#include "plotwidget.h"
 
 class Widget;
 
-namespace Ui {
-    class Widget;
+namespace Ui
+{
+class Widget;
 }
 
 class Widget : public QWidget
@@ -20,55 +20,43 @@ class Widget : public QWidget
     Q_OBJECT
 
 public:
-    explicit Widget(QWidget *parent = 0);
+    explicit Widget(QWidget* parent = 0);
     ~Widget();
 
 private:
+    VisualWidget* VisualWGT;
+    PlotWidget* PlotWGT;
+
     Grid grid;
 
-    Ui::Widget *ui;
-    QGraphicsScene* scene;
-
-    int colors[3][3];
-    int coordZ;
+    Ui::Widget* ui;
 
     int algorithmSteps;
 
     QFutureWatcher<void> watcher;
     int state; // состояние системы (0 - стоп, 1 - старт)
 
-    int counter;
-    QList<double> realStepList;
-    QList<double> realEnergyList;
-    QList<double> realMagnetizationList;
-
-    double energy;
-    double energySquare;
-    double magnetization;
-    double magnetizationSquare;
-
-    QList<double> chartEnergyList;
-    QList<double> chartMagnetizationList;
-    QList<double> chartHeatCapacityList;
-    QList<double> chartMagneticSusceptibilityList;
-
-    void resizeEvent(QResizeEvent* event);
     void newGrid();
     void run();
     void updateForm();
-    void updateImage();
+    void updateVisual();
     void updatePlots();
-    static void updateMinMax(double value, double& min, double& max);
-    static void updateMinMax(double& min, double& max);
+
+protected:
+    void closeEventVisualWGT(QCloseEvent* event);
+    void closeEventPlotWGT(QCloseEvent* event);
 
 public slots:
     void on_newButton_clicked();
     void on_startStopButton_clicked();
     void on_dimensions_currentIndexChanged(int index);
-    void on_coordZ_valueChanged(int value);
     void on_cubeSize_valueChanged(int value);
 
     void check();
+
+private slots:
+    void on_visualButton_clicked();
+    void on_plotButton_clicked();
 };
 
 #endif // WIDGET_H

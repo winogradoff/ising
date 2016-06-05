@@ -1,12 +1,13 @@
 #include "oglwidget.h"
 
-OGLWidget::OGLWidget(QWidget *parent) : QGLWidget(parent)
+OGLWidget::OGLWidget(QWidget* parent)
+    : QGLWidget(parent)
 {
     this->glInitialized = false;
     this->xRot = 0.0;
     this->yRot = 0.0;
     this->zRot = 0.0;
-    this->viewerPosition = ViewerPosition{0.0, 0.0, 10.0};
+    this->viewerPosition = ViewerPosition{ 0.0, 0.0, 10.0 };
 
     this->VertexVBOID = 0;
     this->IndexVBOID = 0;
@@ -43,15 +44,9 @@ void OGLWidget::createVBO()
 
     // Подключить вершины и индексы к CUDA
     cudaGraphicsGLRegisterBuffer(
-        &(this->cudaVertexResource),
-        this->VertexVBOID,
-        cudaGraphicsMapFlagsWriteDiscard
-    );
+        &(this->cudaVertexResource), this->VertexVBOID, cudaGraphicsMapFlagsWriteDiscard);
     cudaGraphicsGLRegisterBuffer(
-        &(this->cudaIndexResource),
-        this->IndexVBOID,
-        cudaGraphicsMapFlagsWriteDiscard
-    );
+        &(this->cudaIndexResource), this->IndexVBOID, cudaGraphicsMapFlagsWriteDiscard);
 }
 
 void OGLWidget::updateVBO()
@@ -110,10 +105,10 @@ void OGLWidget::initializeGL()
     // Сглаживание
     glEnable(GL_MULTISAMPLE);
 
-//    // Закрашивание
-//    glShadeModel(GL_SMOOTH);
-//    glShadeModel(GL_FLAT);
-//    glEnable(GL_COLOR_MATERIAL);
+    //    // Закрашивание
+    //    glShadeModel(GL_SMOOTH);
+    //    glShadeModel(GL_FLAT);
+    //    glEnable(GL_COLOR_MATERIAL);
 }
 
 void OGLWidget::paintGL()
@@ -128,19 +123,19 @@ void OGLWidget::paintGL()
 
     glPushMatrix();
 
-        glTranslatef(0.0, 0.0, 0.0);
-        glScalef(1.0, 1.0, 1.0);
-        glRotatef(0.0, 1.0, 0.0, 0.0);
-        glRotatef(0.0, 0.0, 1.0, 0.0);
-        glRotatef(0.0, 0.0, 0.0, 1.0);
+    glTranslatef(0.0, 0.0, 0.0);
+    glScalef(1.0, 1.0, 1.0);
+    glRotatef(0.0, 1.0, 0.0, 0.0);
+    glRotatef(0.0, 0.0, 1.0, 0.0);
+    glRotatef(0.0, 0.0, 0.0, 1.0);
 
-        glPushAttrib(GL_LIGHTING_BIT);
-        glDisable(GL_LIGHTING);
+    glPushAttrib(GL_LIGHTING_BIT);
+    glDisable(GL_LIGHTING);
 
-        this->drawAxes();
-        this->drawFigure();
+    this->drawAxes();
+    this->drawFigure();
 
-        glPopAttrib();
+    glPopAttrib();
 
     glPopMatrix();
 }
@@ -152,17 +147,16 @@ void OGLWidget::resizeGL(int width, int height)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    GLdouble aspect = (GLdouble) width / (GLdouble) height;
+    GLdouble aspect = (GLdouble)width / (GLdouble)height;
     gluPerspective(45.0, aspect, 0.01, 100.0);
 
     gluLookAt(
         // координаты позиции глаза налюдателя
-        this->viewerPosition.x,  this->viewerPosition.y, this->viewerPosition.z,
+        this->viewerPosition.x, this->viewerPosition.y, this->viewerPosition.z,
         // координаты точки, распологающейся в центре экрана
-        this->viewerPosition.x,  this->viewerPosition.y, 0.0,
+        this->viewerPosition.x, this->viewerPosition.y, 0.0,
         // направление вектора, задающего верх
-        0.0,  1.0, 0.0
-    );
+        0.0, 1.0, 0.0);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -183,7 +177,7 @@ void OGLWidget::drawAxes()
     glColor3f(0.7f, 0.0f, 0.0f);
     glBegin(GL_LINES);
     glVertex3f(-axis_length, 0.0f, 0.0f);
-    glVertex3f( axis_length, 0.0f, 0.0f);
+    glVertex3f(axis_length, 0.0f, 0.0f);
     glEnd();
     glBegin(GL_LINE_STRIP);
     glVertex3f(axis_length - nib_size, -nib_size, 0.0f);
@@ -224,12 +218,8 @@ void OGLWidget::drawFigure()
     {
         this->deleteVBO();
         this->createVBO();
-        cudaInitVBO(
-            &(this->grid),
-            &(this->cudaVertexResource),
-            &(this->cudaIndexResource),
-            this->percentOfCube
-        );
+        cudaInitVBO(&(this->grid), &(this->cudaVertexResource), &(this->cudaIndexResource),
+            this->percentOfCube);
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, this->VertexVBOID);
@@ -241,12 +231,8 @@ void OGLWidget::drawFigure()
     glVertexPointer(3, GL_FLOAT, sizeof(VBOVertex), BUFFER_OFFSET(0));
     glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(VBOVertex), BUFFER_OFFSET(12));
 
-    glDrawElements(
-        GL_QUADS,
-        this->grid.xSize * this->grid.ySize * this->grid.zSize * 24,
-        GL_UNSIGNED_INT,
-        BUFFER_OFFSET(0)
-    );
+    glDrawElements(GL_QUADS, this->grid.xSize * this->grid.ySize * this->grid.zSize * 24,
+        GL_UNSIGNED_INT, BUFFER_OFFSET(0));
 
     glDisableClientState(GL_VERTEX_ARRAY);
     glDisableClientState(GL_COLOR_ARRAY);
@@ -260,12 +246,8 @@ void OGLWidget::setGrid(Grid grid)
     {
         this->deleteVBO();
         this->createVBO();
-        cudaInitVBO(
-            &(this->grid),
-            &(this->cudaVertexResource),
-            &(this->cudaIndexResource),
-            this->percentOfCube
-        );
+        cudaInitVBO(&(this->grid), &(this->cudaVertexResource), &(this->cudaIndexResource),
+            this->percentOfCube);
     }
 }
 
@@ -275,17 +257,13 @@ void OGLWidget::setCubeSize(int value)
 
     if (this->VertexVBOID)
     {
-        cudaInitVBO(
-            &(this->grid),
-            &(this->cudaVertexResource),
-            &(this->cudaIndexResource),
-            this->percentOfCube
-        );
+        cudaInitVBO(&(this->grid), &(this->cudaVertexResource), &(this->cudaIndexResource),
+            this->percentOfCube);
     }
 }
 
 // Обработка движений мыши
-static void qNormalizeAngle(GLfloat &angle)
+static void qNormalizeAngle(GLfloat& angle)
 {
     while (angle < 0)
     {
@@ -328,23 +306,23 @@ void OGLWidget::setZRotation(GLfloat angle)
     }
 }
 
-void OGLWidget::mousePressEvent(QMouseEvent *event)
+void OGLWidget::mousePressEvent(QMouseEvent* event)
 {
     lastPos = event->pos();
 }
 
-void OGLWidget::mouseMoveEvent(QMouseEvent *event)
+void OGLWidget::mouseMoveEvent(QMouseEvent* event)
 {
-    GLfloat dx = GLfloat( event->x() - lastPos.x() ) / 10.0f;
-    GLfloat dy = GLfloat( event->y() - lastPos.y() ) / 10.0f;
+    GLfloat dx = GLfloat(event->x() - lastPos.x()) / 10.0f;
+    GLfloat dy = GLfloat(event->y() - lastPos.y()) / 10.0f;
 
     setXRotation(xRot + dy);
 
-    if(event->buttons() & Qt::LeftButton)
+    if (event->buttons() & Qt::LeftButton)
     {
         setYRotation(yRot + dx);
     }
-    else if(event->buttons() & Qt::RightButton)
+    else if (event->buttons() & Qt::RightButton)
     {
         setZRotation(zRot + dx);
     }
@@ -352,7 +330,7 @@ void OGLWidget::mouseMoveEvent(QMouseEvent *event)
     lastPos = event->pos();
 }
 
-void OGLWidget::wheelEvent(QWheelEvent *event)
+void OGLWidget::wheelEvent(QWheelEvent* event)
 {
     int delta = event->delta();
 
@@ -365,33 +343,35 @@ void OGLWidget::wheelEvent(QWheelEvent *event)
         this->viewerPosition.z -= 0.05f;
     }
 
-    if (this->viewerPosition.z < 0.02f) this->viewerPosition.z = 0.02f;
-    if (this->viewerPosition.z > 20.0f) this->viewerPosition.z = 20.0f;
+    if (this->viewerPosition.z < 0.02f)
+        this->viewerPosition.z = 0.02f;
+    if (this->viewerPosition.z > 20.0f)
+        this->viewerPosition.z = 20.0f;
 
     this->resizeGL(this->width(), this->height());
     this->update();
 }
 
-void OGLWidget::keyPressEvent(QKeyEvent *event)
+void OGLWidget::keyPressEvent(QKeyEvent* event)
 {
-    switch(event->key())
+    switch (event->key())
     {
         case Qt::Key_Up:
         case Qt::Key_W:
             this->viewerPosition.y += 0.05f;
-        break;
+            break;
         case Qt::Key_Down:
         case Qt::Key_S:
             this->viewerPosition.y -= 0.05f;
-        break;
+            break;
         case Qt::Key_Left:
         case Qt::Key_A:
             this->viewerPosition.x -= 0.05f;
-        break;
+            break;
         case Qt::Key_Right:
         case Qt::Key_D:
             this->viewerPosition.x += 0.05f;
-        break;
+            break;
     }
 
     this->resizeGL(this->width(), this->height());

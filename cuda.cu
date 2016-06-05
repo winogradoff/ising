@@ -33,11 +33,11 @@ __constant__ double externalField;
 __constant__ int interactionRadius;
 __constant__ double temperature;
 
-double *tempMatrix;
+double* tempMatrix;
 
 __device__
 uint linearIndex(uint iSize, uint jSize, uint kSize, uint i, uint j, uint k)
-{    
+{
     return (i * jSize + j) * kSize + k;
 }
 
@@ -60,7 +60,8 @@ double gridInteractionPotential(double r)
 }
 
 // float -> half float
-__device__ short floatToHalf(float value)
+__device__
+short floatToHalf(float value)
 {
     short fltInt16;
     int fltInt32;
@@ -73,12 +74,12 @@ __device__ short floatToHalf(float value)
 __device__
 VBOVertex makeVertex(float x, float y, float z, uchar r, uchar g, uchar b, uchar a)
 {
-    return VBOVertex{x, y, z, r, g, b, a};
-//    return VBOVertex{floatToHalf(x), floatToHalf(y), floatToHalf(z), r, g, b, a};
+    return VBOVertex{ x, y, z, r, g, b, a };
+    //    return VBOVertex{floatToHalf(x), floatToHalf(y), floatToHalf(z), r, g, b, a};
 }
 
 __global__
-void kernelInitRandomStates(curandState *randomStates)
+void kernelInitRandomStates(curandState* randomStates)
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -92,7 +93,7 @@ void kernelInitRandomStates(curandState *randomStates)
 }
 
 __global__
-void kernelInitGrid(uchar *data, curandState *randomStates)
+void kernelInitGrid(uchar* data, curandState* randomStates)
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -101,7 +102,7 @@ void kernelInitGrid(uchar *data, curandState *randomStates)
     uint offsety = gridDim.y * blockDim.y;
     uint offsetz = gridDim.z * blockDim.z;
 
-    curandState *rndState = &(randomStates[linearIndex(offsetx, offsety, offsetz, idx, idy, idz)]);
+    curandState* rndState = &(randomStates[linearIndex(offsetx, offsety, offsetz, idx, idy, idz)]);
 
     for (uint i = idx; i < xSize; i += offsetx)
     {
@@ -117,7 +118,8 @@ void kernelInitGrid(uchar *data, curandState *randomStates)
 }
 
 __global__
-void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int itery, int iterz)
+void kernelAlgorithm(
+    uchar* data, curandState* randomStates, int iterx, int itery, int iterz)
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -127,7 +129,7 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
     uint offsetz = gridDim.z * blockDim.z;
 
     uint rndIndex = linearIndex(offsetx, offsety, offsetz, idx, idy, idz);
-    curandState *rndState = &(randomStates[rndIndex]);
+    curandState* rndState = &(randomStates[rndIndex]);
 
     uint gridOffsetx = offsetx * (interactionRadius + 1);
     uint gridOffsety = offsety * (interactionRadius + 1);
@@ -141,8 +143,12 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
     radiusX = radiusY = radiusZ = interactionRadius;
     switch (dimension)
     {
-        case DIM_1: radiusY = radiusZ = 0; break;
-        case DIM_2: radiusZ = 0; break;
+        case DIM_1:
+            radiusY = radiusZ = 0;
+            break;
+        case DIM_2:
+            radiusZ = 0;
+            break;
     }
 
     for (int i = idx + idx * interactionRadius + iterx; i < xSize; i += gridOffsetx)
@@ -155,7 +161,8 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
                 spinValue = data[index] - 1;
 
                 // Пропустить, если немагнитная частица
-                if (spinValue == 0) continue;
+                if (spinValue == 0)
+                    continue;
 
                 gridSpinEnergy = externalField;
 
@@ -169,20 +176,21 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
                             yy = (ySize + y) % ySize;
                             zz = (zSize + z) % zSize;
 
-                            if (xx == i && yy == j && zz == k) continue;
+                            if (xx == i && yy == j && zz == k)
+                                continue;
 
                             dist = gridDistantion(i, j, k, x, y, z);
 
                             if (dist <= interactionRadius)
                             {
                                 gridSpinEnergy += (data[gridIndex(xx, yy, zz)] - 1)
-                                                  * gridInteractionPotential(dist);
+                                    * gridInteractionPotential(dist);
                             }
                         }
                     }
                 }
 
-                expValue  = exp(gridSpinEnergy / temperature);
+                expValue = exp(gridSpinEnergy / temperature);
                 probability = expValue / (expValue + 1.0 / expValue);
 
                 if (curand_uniform(rndState) > probability)
@@ -199,7 +207,7 @@ void kernelAlgorithm(uchar *data, curandState *randomStates, int iterx, int iter
 }
 
 __global__
-void kernelMagnetization(uchar *data, double *result)
+void kernelMagnetization(uchar* data, double* result)
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -215,14 +223,14 @@ void kernelMagnetization(uchar *data, double *result)
             for (uint k = idz; k < zSize; k += offsetz)
             {
                 int index = gridIndex(i, j, k);
-                result[index] = ((double) data[index]) - 1.0;
+                result[index] = ((double)data[index]) - 1.0;
             }
         }
     }
 }
 
 __global__
-void kernelEnergy(uchar *data, double *result)
+void kernelEnergy(uchar* data, double* result)
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -238,20 +246,24 @@ void kernelEnergy(uchar *data, double *result)
     radiusX = radiusY = radiusZ = interactionRadius;
     switch (dimension)
     {
-        case DIM_1: radiusY = radiusZ = 0; break;
-        case DIM_2: radiusZ = 0; break;
+        case DIM_1:
+            radiusY = radiusZ = 0;
+            break;
+        case DIM_2:
+            radiusZ = 0;
+            break;
     }
 
-    for (uint i = idx; i < xSize; i += offsetx)
+    for (int i = idx; i < xSize; i += offsetx)
     {
-        for (uint j = idy; j < ySize; j += offsety)
+        for (int j = idy; j < ySize; j += offsety)
         {
-            for (uint k = idz; k < zSize; k += offsetz)
+            for (int k = idz; k < zSize; k += offsetz)
             {
                 index = gridIndex(i, j, k);
 
                 energy = 0.0;
-                spinValue = ((double) data[index]) - 1.0;
+                spinValue = ((double)data[index]) - 1.0;
 
                 for (int x = i; x <= i + radiusX; x++)
                 {
@@ -263,14 +275,15 @@ void kernelEnergy(uchar *data, double *result)
                             yy = (ySize + y) % ySize;
                             zz = (zSize + z) % zSize;
 
-                            if (xx == i && yy == j && zz == k) continue;
+                            if (xx == i && yy == j && zz == k)
+                                continue;
 
                             dist = gridDistantion(i, j, k, x, y, z);
 
                             if (dist <= interactionRadius)
                             {
-                                energy += (((double) data[gridIndex(xx, yy, zz)]) - 1)
-                                          * gridInteractionPotential(dist);
+                                energy += (((double)data[gridIndex(xx, yy, zz)]) - 1)
+                                    * gridInteractionPotential(dist);
                             }
                         }
                     }
@@ -283,7 +296,7 @@ void kernelEnergy(uchar *data, double *result)
 }
 
 __global__
-void kernelInitVBO(uchar *data, VBOVertex *vertices, uint *indices, int percentOfCube)
+void kernelInitVBO(uchar* data, VBOVertex* vertices, uint* indices, int percentOfCube)
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -312,9 +325,24 @@ void kernelInitVBO(uchar *data, VBOVertex *vertices, uint *indices, int percentO
 
                 switch (data[index])
                 {
-                    case 0: r = 0;   g = 255; b = 0;   a = 255; break;
-                    case 1: r = 255; g = 255; b = 255; a = 255; break;
-                    case 2: r = 255; g = 0;   b = 0;   a = 255; break;
+                    case 0:
+                        r = 0;
+                        g = 255;
+                        b = 0;
+                        a = 255;
+                        break;
+                    case 1:
+                        r = 255;
+                        g = 255;
+                        b = 255;
+                        a = 255;
+                        break;
+                    case 2:
+                        r = 255;
+                        g = 0;
+                        b = 0;
+                        a = 255;
+                        break;
                 }
 
                 float x = i * (cubeSize + cubeSpace) + 0.5f * (cubeSize - lengthX) - 0.5f * cubeSize;
@@ -324,48 +352,60 @@ void kernelInitVBO(uchar *data, VBOVertex *vertices, uint *indices, int percentO
                 // 8 вершин куба
                 uint vpos = index * 8;
 
-                vertices[vpos + 0] = makeVertex(x,            y,            z           , r, g, b, a);
-                vertices[vpos + 1] = makeVertex(x,            y,            z + cubeSize, r, g, b, a);
-                vertices[vpos + 2] = makeVertex(x,            y + cubeSize, z           , r, g, b, a);
-                vertices[vpos + 3] = makeVertex(x,            y + cubeSize, z + cubeSize, r, g, b, a);
-                vertices[vpos + 4] = makeVertex(x + cubeSize, y,            z           , r, g, b, a);
-                vertices[vpos + 5] = makeVertex(x + cubeSize, y,            z + cubeSize, r, g, b, a);
-                vertices[vpos + 6] = makeVertex(x + cubeSize, y + cubeSize, z           , r, g, b, a);
-                vertices[vpos + 7] = makeVertex(x + cubeSize, y + cubeSize, z + cubeSize, r, g, b, a);
+                vertices[vpos + 0] = makeVertex(x, y, z, r, g, b, a);
+                vertices[vpos + 1] = makeVertex(x, y, z + cubeSize, r, g, b, a);
+                vertices[vpos + 2] = makeVertex(x, y + cubeSize, z, r, g, b, a);
+                vertices[vpos + 3] = makeVertex(x, y + cubeSize, z + cubeSize, r, g, b, a);
+                vertices[vpos + 4] = makeVertex(x + cubeSize, y, z, r, g, b, a);
+                vertices[vpos + 5] = makeVertex(x + cubeSize, y, z + cubeSize, r, g, b, a);
+                vertices[vpos + 6] = makeVertex(x + cubeSize, y + cubeSize, z, r, g, b, a);
+                vertices[vpos + 7]
+                    = makeVertex(x + cubeSize, y + cubeSize, z + cubeSize, r, g, b, a);
 
                 // 24 индекса для рисования GL_QUADS
                 uint ipos = index * 24;
 
                 // Перед
-                indices[ipos++] = vpos + 0; indices[ipos++] = vpos + 4;
-                indices[ipos++] = vpos + 5; indices[ipos++] = vpos + 1;
+                indices[ipos++] = vpos + 0;
+                indices[ipos++] = vpos + 4;
+                indices[ipos++] = vpos + 5;
+                indices[ipos++] = vpos + 1;
 
                 // Зад
-                indices[ipos++] = vpos + 2; indices[ipos++] = vpos + 3;
-                indices[ipos++] = vpos + 7; indices[ipos++] = vpos + 6;
+                indices[ipos++] = vpos + 2;
+                indices[ipos++] = vpos + 3;
+                indices[ipos++] = vpos + 7;
+                indices[ipos++] = vpos + 6;
 
                 // Верх
-                indices[ipos++] = vpos + 1; indices[ipos++] = vpos + 5;
-                indices[ipos++] = vpos + 7; indices[ipos++] = vpos + 3;
+                indices[ipos++] = vpos + 1;
+                indices[ipos++] = vpos + 5;
+                indices[ipos++] = vpos + 7;
+                indices[ipos++] = vpos + 3;
 
                 // Низ
-                indices[ipos++] = vpos + 0; indices[ipos++] = vpos + 2;
-                indices[ipos++] = vpos + 6; indices[ipos++] = vpos + 4;
+                indices[ipos++] = vpos + 0;
+                indices[ipos++] = vpos + 2;
+                indices[ipos++] = vpos + 6;
+                indices[ipos++] = vpos + 4;
 
                 // Лево
-                indices[ipos++] = vpos + 0; indices[ipos++] = vpos + 1;
-                indices[ipos++] = vpos + 3; indices[ipos++] = vpos + 2;
+                indices[ipos++] = vpos + 0;
+                indices[ipos++] = vpos + 1;
+                indices[ipos++] = vpos + 3;
+                indices[ipos++] = vpos + 2;
 
                 // Право
-                indices[ipos++] = vpos + 4; indices[ipos++] = vpos + 6;
-                indices[ipos++] = vpos + 7; indices[ipos++] = vpos + 5;
+                indices[ipos++] = vpos + 4;
+                indices[ipos++] = vpos + 6;
+                indices[ipos++] = vpos + 7;
+                indices[ipos++] = vpos + 5;
             }
         }
     }
 }
 
-__global__
-void kernelUpdateVBO(uchar *data, VBOVertex *verts)
+__global__ void kernelUpdateVBO(uchar* data, VBOVertex* verts)
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -385,49 +425,76 @@ void kernelUpdateVBO(uchar *data, VBOVertex *verts)
 
                 switch (data[index])
                 {
-                    case 0: r = 0;   g = 255; b = 0;   a = 0; break;
-                    case 1: r = 255; g = 255; b = 255; a = 0; break;
-                    case 2: r = 255; g = 0;   b = 0;   a = 0; break;
+                    case 0:
+                        r = 0;
+                        g = 255;
+                        b = 0;
+                        a = 0;
+                        break;
+                    case 1:
+                        r = 255;
+                        g = 255;
+                        b = 255;
+                        a = 0;
+                        break;
+                    case 2:
+                        r = 255;
+                        g = 0;
+                        b = 0;
+                        a = 0;
+                        break;
                 }
 
                 for (uint v = index * 8; v < index * 8 + 8; v++)
                 {
-                    verts[v].r = r; verts[v].g = g; verts[v].b = b; verts[v].a = a;
+                    verts[v].r = r;
+                    verts[v].g = g;
+                    verts[v].b = b;
+                    verts[v].a = a;
                 }
             }
         }
     }
 }
 
-void cudaInitGrid(Grid *g)
-{   
-    cudaMemcpyToSymbol((const void *) &dimension,         &(g->dimension),         sizeof(DimensionEnum));
-    cudaMemcpyToSymbol((const void *) &xSize,             &(g->xSize),             sizeof(int));
-    cudaMemcpyToSymbol((const void *) &ySize,             &(g->ySize),             sizeof(int));
-    cudaMemcpyToSymbol((const void *) &zSize,             &(g->zSize),             sizeof(int));
-    cudaMemcpyToSymbol((const void *) &interactionEnergy, &(g->interactionEnergy), sizeof(int));
-    cudaMemcpyToSymbol((const void *) &externalField,     &(g->externalField),     sizeof(double));
-    cudaMemcpyToSymbol((const void *) &interactionRadius, &(g->interactionRadius), sizeof(int));
-    cudaMemcpyToSymbol((const void *) &temperature,       &(g->temperature),       sizeof(double));
+void cudaInitGrid(Grid* g)
+{
+    cudaMemcpyToSymbol((const void*)&dimension, &(g->dimension), sizeof(DimensionEnum));
+    cudaMemcpyToSymbol((const void*)&xSize, &(g->xSize), sizeof(int));
+    cudaMemcpyToSymbol((const void*)&ySize, &(g->ySize), sizeof(int));
+    cudaMemcpyToSymbol((const void*)&zSize, &(g->zSize), sizeof(int));
+    cudaMemcpyToSymbol((const void*)&interactionEnergy, &(g->interactionEnergy), sizeof(int));
+    cudaMemcpyToSymbol((const void*)&externalField, &(g->externalField), sizeof(double));
+    cudaMemcpyToSymbol((const void*)&interactionRadius, &(g->interactionRadius), sizeof(int));
+    cudaMemcpyToSymbol((const void*)&temperature, &(g->temperature), sizeof(double));
 
     switch (g->dimension)
     {
-        case DIM_1: blocks = blocks_1d; threads = threads_1d; break;
-        case DIM_2: blocks = blocks_2d; threads = threads_2d; break;
-        case DIM_3: blocks = blocks_3d; threads = threads_3d; break;
+        case DIM_1:
+            blocks = blocks_1d;
+            threads = threads_1d;
+            break;
+        case DIM_2:
+            blocks = blocks_2d;
+            threads = threads_2d;
+            break;
+        case DIM_3:
+            blocks = blocks_3d;
+            threads = threads_3d;
+            break;
     }
 
     uint cudaSize = blocks.x * blocks.y * blocks.z * threads.x * threads.y * threads.z;
-    cudaMalloc((void **) &(g->randomStates), sizeof(curandState) * cudaSize);
+    cudaMalloc((void**)&(g->randomStates), sizeof(curandState) * cudaSize);
     kernelInitRandomStates<<<blocks, threads>>>(g->randomStates);
 
     uint dataSize = g->xSize * g->ySize * g->zSize;
-    cudaMalloc((void **) &(g->deviceMatrix), sizeof(uchar) * dataSize);
-    cudaMalloc((void **) &tempMatrix, sizeof(double) * dataSize);
+    cudaMalloc((void**)&(g->deviceMatrix), sizeof(uchar) * dataSize);
+    cudaMalloc((void**)&tempMatrix, sizeof(double) * dataSize);
     kernelInitGrid<<<blocks, threads>>>(g->deviceMatrix, g->randomStates);
 }
 
-void cudaFreeGrid(Grid *g)
+void cudaFreeGrid(Grid* g)
 {
     if (g->randomStates != NULL)
     {
@@ -448,7 +515,7 @@ void cudaFreeGrid(Grid *g)
     }
 }
 
-void cudaAlgorithmStep(Grid *g, uint algorithmSteps)
+void cudaAlgorithmStep(Grid* g, uint algorithmSteps)
 {
     for (uint i = 0; i < algorithmSteps; i++)
     {
@@ -458,14 +525,15 @@ void cudaAlgorithmStep(Grid *g, uint algorithmSteps)
             {
                 for (int iterz = 0; iterz <= g->interactionRadius; iterz++)
                 {
-                    kernelAlgorithm<<<blocks, threads>>>(g->deviceMatrix, g->randomStates, iterx, itery, iterz);
+                    kernelAlgorithm<<<blocks, threads>>>(
+                        g->deviceMatrix, g->randomStates, iterx, itery, iterz);
                 }
             }
         }
     }
 }
 
-double cudaMagnetization(Grid *g)
+double cudaMagnetization(Grid* g)
 {
     kernelMagnetization<<<blocks, threads>>>(g->deviceMatrix, tempMatrix);
     double sum = 0.0;
@@ -475,7 +543,7 @@ double cudaMagnetization(Grid *g)
     return sum;
 }
 
-double cudaEnergy(Grid *g)
+double cudaEnergy(Grid* g)
 {
     kernelEnergy<<<blocks, threads>>>(g->deviceMatrix, tempMatrix);
     double sum = 0.0;
@@ -485,22 +553,18 @@ double cudaEnergy(Grid *g)
     return sum;
 }
 
-void cudaInitVBO(
-        Grid *g,
-        struct cudaGraphicsResource **cudaVertexResource,
-        struct cudaGraphicsResource **cudaIndexResource,
-        int percentOfCube
-)
+void cudaInitVBO(Grid* g, struct cudaGraphicsResource** cudaVertexResource,
+    struct cudaGraphicsResource** cudaIndexResource, int percentOfCube)
 {
-    VBOVertex *vertices;
-    uint *indexes;
+    VBOVertex* vertices;
+    uint* indexes;
 
     size_t num_bytes;
 
     cudaGraphicsMapResources(1, cudaVertexResource, 0);
-    cudaGraphicsResourceGetMappedPointer((void **) &vertices, &num_bytes, *cudaVertexResource);
+    cudaGraphicsResourceGetMappedPointer((void**)&vertices, &num_bytes, *cudaVertexResource);
     cudaGraphicsMapResources(1, cudaIndexResource, 0);
-    cudaGraphicsResourceGetMappedPointer((void **) &indexes, &num_bytes, *cudaIndexResource);
+    cudaGraphicsResourceGetMappedPointer((void**)&indexes, &num_bytes, *cudaIndexResource);
 
     kernelInitVBO<<<blocks, threads>>>(g->deviceMatrix, vertices, indexes, percentOfCube);
 
@@ -508,16 +572,13 @@ void cudaInitVBO(
     cudaGraphicsUnmapResources(1, cudaIndexResource, 0);
 }
 
-void cudaUpdateVBO(
-        Grid *g,
-        struct cudaGraphicsResource **cudaVertexResource
-)
+void cudaUpdateVBO(Grid* g, struct cudaGraphicsResource** cudaVertexResource)
 {
-    VBOVertex *vertices;
+    VBOVertex* vertices;
     size_t num_bytes;
 
     cudaGraphicsMapResources(1, cudaVertexResource, 0);
-    cudaGraphicsResourceGetMappedPointer((void **) &vertices, &num_bytes, *cudaVertexResource);
+    cudaGraphicsResourceGetMappedPointer((void**)&vertices, &num_bytes, *cudaVertexResource);
 
     kernelUpdateVBO<<<blocks, threads>>>(g->deviceMatrix, vertices);
 
