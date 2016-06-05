@@ -38,7 +38,7 @@ void OGLWidget::createVBO()
     // Создать VBO для индексов
     glGenBuffers(1, &(this->IndexVBOID));
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->IndexVBOID);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexSize, 0, GL_DYNAMIC_DRAW); // TODO
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexSize, 0, GL_STATIC_DRAW); // TODO
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     // Подключить вершины и индексы к CUDA
@@ -230,27 +230,16 @@ void OGLWidget::drawFigure()
             &(this->cudaIndexResource),
             this->percentOfCube
         );
-        this->update();
     }
 
-//    glBindBuffer(GL_ARRAY_BUFFER, this->VertexVBOID);
-//    glEnableClientState(GL_VERTEX_ARRAY);
-//    glEnableClientState(GL_COLOR_ARRAY);
-
-//    glVertexPointer(3, GL_FLOAT, 16, (void *) 0);
-//    glColorPointer(4, GL_UNSIGNED_BYTE, 16, (void *) 12);
-
-//    glDrawArrays(GL_QUADS, 0, this->grid.xSize * this->grid.ySize * this->grid.zSize * 24);
+    glBindBuffer(GL_ARRAY_BUFFER, this->VertexVBOID);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->IndexVBOID);
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
 
-    glBindBuffer(GL_ARRAY_BUFFER, this->VertexVBOID);
-
     glVertexPointer(3, GL_FLOAT, sizeof(VBOVertex), BUFFER_OFFSET(0));
     glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(VBOVertex), BUFFER_OFFSET(12));
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->IndexVBOID);
 
     glDrawElements(
         GL_QUADS,
