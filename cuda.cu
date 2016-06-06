@@ -32,6 +32,7 @@ __constant__ int interactionEnergy;
 __constant__ double externalField;
 __constant__ int interactionRadius;
 __constant__ double temperature;
+__constant__ int percentOfCube;
 
 double* tempMatrix;
 
@@ -296,7 +297,7 @@ void kernelEnergy(uchar* data, double* result)
 }
 
 __global__
-void kernelInitVBO(uchar* data, VBOVertex* vertices, uint* indices, int percentOfCube)
+void kernelInitVBO(uchar* data, VBOVertex* vertices, uint* indices)
 {
     uint idx = blockIdx.x * blockDim.x + threadIdx.x;
     uint idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -467,6 +468,7 @@ void cudaInitGrid(Grid* g)
     cudaMemcpyToSymbol((const void*)&externalField, &(g->externalField), sizeof(double));
     cudaMemcpyToSymbol((const void*)&interactionRadius, &(g->interactionRadius), sizeof(int));
     cudaMemcpyToSymbol((const void*)&temperature, &(g->temperature), sizeof(double));
+    cudaMemcpyToSymbol((const void*)&percentOfCube, &(g->percentOfCube), sizeof(int));
 
     switch (g->dimension)
     {
@@ -500,6 +502,7 @@ void cudaSetParams(Grid* g)
     cudaMemcpyToSymbol((const void*)&externalField, &(g->externalField), sizeof(double));
     cudaMemcpyToSymbol((const void*)&interactionRadius, &(g->interactionRadius), sizeof(int));
     cudaMemcpyToSymbol((const void*)&temperature, &(g->temperature), sizeof(double));
+    cudaMemcpyToSymbol((const void*)&percentOfCube, &(g->percentOfCube), sizeof(int));
 }
 
 void cudaFreeGrid(Grid* g)
@@ -562,7 +565,7 @@ double cudaEnergy(Grid* g)
 }
 
 void cudaInitVBO(Grid* g, struct cudaGraphicsResource** cudaVertexResource,
-    struct cudaGraphicsResource** cudaIndexResource, int percentOfCube)
+    struct cudaGraphicsResource** cudaIndexResource)
 {
     VBOVertex* vertices;
     uint* indexes;
@@ -574,7 +577,7 @@ void cudaInitVBO(Grid* g, struct cudaGraphicsResource** cudaVertexResource,
     cudaGraphicsMapResources(1, cudaIndexResource, 0);
     cudaGraphicsResourceGetMappedPointer((void**)&indexes, &num_bytes, *cudaIndexResource);
 
-    kernelInitVBO<<<blocks, threads>>>(g->deviceMatrix, vertices, indexes, percentOfCube);
+    kernelInitVBO<<<blocks, threads>>>(g->deviceMatrix, vertices, indexes);
 
     cudaGraphicsUnmapResources(1, cudaVertexResource, 0);
     cudaGraphicsUnmapResources(1, cudaIndexResource, 0);

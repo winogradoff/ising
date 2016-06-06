@@ -50,8 +50,7 @@ void OGLWidget::createVBO()
     cudaGraphicsGLRegisterBuffer(
         &(this->cudaIndexResource), this->IndexVBOID, cudaGraphicsMapFlagsWriteDiscard);
 
-    cudaInitVBO(&(this->grid), &(this->cudaVertexResource), &(this->cudaIndexResource),
-        this->percentOfCube);
+    cudaInitVBO(&(this->grid), &(this->cudaVertexResource), &(this->cudaIndexResource));
 }
 
 void OGLWidget::updateVBO()
@@ -256,16 +255,16 @@ void OGLWidget::setParams(Grid g)
     this->grid.interactionEnergy = g.interactionEnergy;
     this->grid.interactionRadius = g.interactionRadius;
     this->grid.temperature = g.temperature;
-}
 
-void OGLWidget::setCubeSize(int value)
-{
-    this->percentOfCube = value;
-
-    if (this->VertexVBOID)
+    if (this->grid.percentOfCube != g.percentOfCube)
     {
-        cudaInitVBO(&(this->grid), &(this->cudaVertexResource), &(this->cudaIndexResource),
-            this->percentOfCube);
+        this->grid.percentOfCube = g.percentOfCube;
+        cudaInitVBO(&(this->grid), &(this->cudaVertexResource), &(this->cudaIndexResource));
+        this->update();
+    }
+    else
+    {
+        this->grid.percentOfCube = g.percentOfCube;
     }
 }
 
@@ -350,10 +349,8 @@ void OGLWidget::wheelEvent(QWheelEvent* event)
         this->viewerPosition.z -= 0.05f;
     }
 
-    if (this->viewerPosition.z < 0.02f)
-        this->viewerPosition.z = 0.02f;
-    if (this->viewerPosition.z > 20.0f)
-        this->viewerPosition.z = 20.0f;
+    if (this->viewerPosition.z < 0.02f) this->viewerPosition.z = 0.02f;
+    if (this->viewerPosition.z > 20.0f) this->viewerPosition.z = 20.0f;
 
     this->resizeGL(this->width(), this->height());
     this->update();

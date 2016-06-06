@@ -18,7 +18,6 @@ public:
     ~VisualWidget();
 
     void setGrid(Grid g);
-    void setCubeSize(int value);
     void setParams(Grid g);
     void updateImage();
 

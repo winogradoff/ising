@@ -63,7 +63,6 @@ private:
     QPoint lastPos;
 
     Grid grid;
-    int percentOfCube;
 
     ViewerPosition viewerPosition;
 

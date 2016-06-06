@@ -51,7 +51,7 @@ public slots:
     void on_updateButton_clicked();
     void on_startStopButton_clicked();
     void on_dimensions_currentIndexChanged(int index);
-    void on_cubeSize_valueChanged(int value);
+//    void on_cubeSize_valueChanged(int value);
     void check();
 
 private slots:

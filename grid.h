@@ -21,6 +21,8 @@ struct Grid
 
     curandState* randomStates; // состояния генераторов случайных чисел CUDA
     uchar* deviceMatrix; // решётка на GPU
+
+    int percentOfCube; // размер для визуализации в %
 };
 
 // CUDA functions
@@ -32,10 +34,8 @@ double cudaMagnetization(Grid* g);
 double cudaEnergy(Grid* g);
 
 void cudaInitVBO(Grid* g, struct cudaGraphicsResource** cudaVertexResource,
-    struct cudaGraphicsResource** cudaIndexResource, int percentOfCube);
+    struct cudaGraphicsResource** cudaIndexResource);
 
-void cudaUpdateVBO(Grid* g, struct cudaGraphicsResource** cudaVertexResource
-    // struct cudaGraphicsResource **cudaIndexResource,
-    );
+void cudaUpdateVBO(Grid* g, struct cudaGraphicsResource** cudaVertexResource);
 
 #endif // GRID_H

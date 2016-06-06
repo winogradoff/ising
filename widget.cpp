@@ -1,4 +1,3 @@
-
 #include "widget.h"
 #include "ui_widget.h"
 #include <QMessageBox>
@@ -41,15 +40,6 @@ void Widget::on_dimensions_currentIndexChanged(int)
     this->updateForm();
 }
 
-void Widget::on_cubeSize_valueChanged(int value)
-{
-    if (this->VisualWGT != NULL)
-    {
-        this->VisualWGT->setCubeSize(value);
-        this->VisualWGT->updateImage();
-    }
-}
-
 void Widget::on_newButton_clicked()
 {
     ui->progressLabel->setText("");
@@ -65,11 +55,11 @@ void Widget::on_newButton_clicked()
 void Widget::on_updateButton_clicked()
 {
     this->algorithmSteps = ui->algorithmSteps->value();
-
     this->grid.interactionEnergy = ui->interactionEnergy->value();
     this->grid.externalField = ui->externalField->value();
     this->grid.temperature = ui->temperature->value();
     this->grid.interactionRadius = ui->interactionRadius->value();
+    this->grid.percentOfCube = ui->cubeSize->value();
 
     cudaSetParams(&(this->grid));
 
@@ -150,6 +140,7 @@ void Widget::newGrid()
     this->grid.temperature = ui->temperature->value();
     this->grid.interactionRadius = ui->interactionRadius->value();
     this->grid.nonmagneticParticles = ui->nonmagneticParticles->value();
+    this->grid.percentOfCube = ui->cubeSize->value();
     this->algorithmSteps = ui->algorithmSteps->value();
 
     switch (this->grid.dimension)
@@ -172,7 +163,6 @@ void Widget::newGrid()
     if (this->VisualWGT != NULL)
     {
         this->VisualWGT->setGrid(this->grid);
-        this->VisualWGT->setCubeSize(ui->cubeSize->value());
     }
 
     if (this->PlotWGT != NULL)
@@ -252,7 +242,6 @@ void Widget::on_visualButton_clicked()
         VisualWGT->show();
         connect(VisualWGT, SIGNAL(closedSignal()), this, SLOT(on_visualButton_clicked()));
         this->VisualWGT->setGrid(this->grid);
-        this->VisualWGT->setCubeSize((ui->cubeSize->value()));
         this->VisualWGT->updateImage();
     }
     else if (VisualWGT != NULL)

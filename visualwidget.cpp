@@ -19,12 +19,6 @@ void VisualWidget::setGrid(Grid g)
     this->OpenGLWGT->setGrid(g);
 }
 
-void VisualWidget::setCubeSize(int value)
-{
-
-    this->OpenGLWGT->setCubeSize(value);
-}
-
 void VisualWidget::setParams(Grid g)
 {
     this->OpenGLWGT->setParams(g);
