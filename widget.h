@@ -32,6 +32,7 @@ private:
     Ui::Widget* ui;
 
     int algorithmSteps;
+    long long iterationNumber;
 
     QFutureWatcher<void> watcher;
     int state; // состояние системы (0 - стоп, 1 - старт)
@@ -47,6 +48,7 @@ protected:
 
 public slots:
     void on_newButton_clicked();
+    void on_updateButton_clicked();
     void on_startStopButton_clicked();
     void on_dimensions_currentIndexChanged(int index);
     void on_cubeSize_valueChanged(int value);

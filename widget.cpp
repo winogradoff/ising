@@ -22,6 +22,10 @@ Widget::Widget(QWidget* parent)
 
     this->state = 0;
 
+    this->iterationNumber = 0;
+    ui->infoLabel->setText("");
+    ui->progressLabel->setText("");
+
     this->updateForm();
     this->on_newButton_clicked();
 }
@@ -41,26 +45,51 @@ void Widget::on_cubeSize_valueChanged(int value)
 {
     if (this->VisualWGT != NULL)
     {
-        this->VisualWGT->OpenGLWGT->setCubeSize(value);
-        this->VisualWGT->OpenGLWGT->update();
+        this->VisualWGT->setCubeSize(value);
+        this->VisualWGT->updateImage();
     }
 }
 
 void Widget::on_newButton_clicked()
 {
+    ui->progressLabel->setText("");
+    this->iterationNumber = 0;
+
     this->newGrid();
     this->updateVisual();
     this->updatePlots();
+
+    ui->infoLabel->setText("Новая конфигурация создана");
+}
+
+void Widget::on_updateButton_clicked()
+{
+    this->algorithmSteps = ui->algorithmSteps->value();
+
+    this->grid.interactionEnergy = ui->interactionEnergy->value();
+    this->grid.externalField = ui->externalField->value();
+    this->grid.temperature = ui->temperature->value();
+    this->grid.interactionRadius = ui->interactionRadius->value();
+
+    cudaSetParams(&(this->grid));
+
+    if (this->VisualWGT != NULL)
+    {
+        this->VisualWGT->setParams(this->grid);
+    }
+
+    if (this->PlotWGT != NULL)
+    {
+        this->PlotWGT->setParams(this->grid);
+    }
+
+    ui->infoLabel->setText("Параметры конфигурации обновлены");
 }
 
 void Widget::on_startStopButton_clicked()
 {
     if (this->state == 0)
     {
-        //        if(this->VisualWGT==NULL)
-        //        {
-        //            on_visualButton_clicked();
-        //        }
         this->state = 1;
         ui->newButton->setEnabled(false);
         ui->startStopButton->setText("Стоп");
@@ -73,6 +102,7 @@ void Widget::on_startStopButton_clicked()
         this->watcher.waitForFinished();
         ui->newButton->setEnabled(true);
         ui->startStopButton->setText("Старт");
+        ui->infoLabel->setText("Остановлено");
     }
 }
 
@@ -141,8 +171,8 @@ void Widget::newGrid()
 
     if (this->VisualWGT != NULL)
     {
-        this->VisualWGT->OpenGLWGT->setGrid(this->grid);
-        this->VisualWGT->OpenGLWGT->setCubeSize(ui->cubeSize->value());
+        this->VisualWGT->setGrid(this->grid);
+        this->VisualWGT->setCubeSize(ui->cubeSize->value());
     }
 
     if (this->PlotWGT != NULL)
@@ -153,18 +183,26 @@ void Widget::newGrid()
 
 void Widget::run()
 {
+    ui->infoLabel->setText("Работает");
+
     this->watcher.setFuture(QtConcurrent::run(
         [](Widget* w)
         {
             cudaAlgorithmStep(&(w->grid), w->algorithmSteps);
         },
-        this));
+        this
+    ));
 }
 
 void Widget::check()
 {
+    this->iterationNumber += this->algorithmSteps;
+
+    ui->progressLabel->setText(QString("Итерация %1").arg(this->iterationNumber));
+
     this->updateVisual();
     this->updatePlots();
+
     if (this->state == 1)
     {
         this->run();
@@ -175,8 +213,7 @@ void Widget::updateVisual()
 {
     if (this->VisualWGT != NULL)
     {
-        this->VisualWGT->OpenGLWGT->updateVBO();
-        this->VisualWGT->OpenGLWGT->update();
+        this->VisualWGT->updateImage();
     }
 }
 
@@ -214,9 +251,9 @@ void Widget::on_visualButton_clicked()
         VisualWGT = new VisualWidget();
         VisualWGT->show();
         connect(VisualWGT, SIGNAL(closedSignal()), this, SLOT(on_visualButton_clicked()));
-        this->VisualWGT->OpenGLWGT->setGrid(this->grid);
-        this->VisualWGT->OpenGLWGT->setCubeSize((ui->cubeSize->value()));
-        this->VisualWGT->OpenGLWGT->update();
+        this->VisualWGT->setGrid(this->grid);
+        this->VisualWGT->setCubeSize((ui->cubeSize->value()));
+        this->VisualWGT->updateImage();
     }
     else if (VisualWGT != NULL)
     {

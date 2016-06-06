@@ -42,6 +42,14 @@ void PlotWidget::setGrid(Grid g)
     ui->customPlot4->replot();
 }
 
+void PlotWidget::setParams(Grid g)
+{
+    this->grid.externalField = g.externalField;
+    this->grid.interactionEnergy = g.interactionEnergy;
+    this->grid.interactionRadius = g.interactionRadius;
+    this->grid.temperature = g.temperature;
+}
+
 void PlotWidget::updatePlots(double e, double m)
 {
     double temperature = this->grid.temperature;

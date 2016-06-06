@@ -21,9 +21,10 @@ class OGLWidget : public QGLWidget, protected QOpenGLFunctions
 public:
     OGLWidget(QWidget* parent = 0);
     ~OGLWidget();
-    void setGrid(Grid grid);
 
+    void setGrid(Grid g);
     void setCubeSize(int value);
+    void setParams(Grid grid);
 
     // Vertex Buffer Object <-> CUDA
     GLuint VertexVBOID;

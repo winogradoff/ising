@@ -14,6 +14,28 @@ VisualWidget::~VisualWidget()
     delete ui;
 }
 
+void VisualWidget::setGrid(Grid g)
+{
+    this->OpenGLWGT->setGrid(g);
+}
+
+void VisualWidget::setCubeSize(int value)
+{
+
+    this->OpenGLWGT->setCubeSize(value);
+}
+
+void VisualWidget::setParams(Grid g)
+{
+    this->OpenGLWGT->setParams(g);
+}
+
+void VisualWidget::updateImage()
+{
+    this->OpenGLWGT->updateVBO();
+    this->OpenGLWGT->update();
+}
+
 void VisualWidget::closeEvent(QCloseEvent* e)
 {
     QWidget::closeEvent(e);

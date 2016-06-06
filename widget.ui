@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>368</width>
-    <height>480</height>
+    <height>578</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -334,6 +334,13 @@
         </widget>
        </item>
        <item>
+        <widget class="QPushButton" name="updateButton">
+         <property name="text">
+          <string>Обновить конфигурацию</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="startStopButton">
          <property name="focusPolicy">
           <enum>Qt::ClickFocus</enum>
@@ -362,6 +369,39 @@
           <bool>false</bool>
          </property>
         </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="infoLabel">
+         <property name="text">
+          <string>TextLabel</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="progressLabel">
+         <property name="text">
+          <string>TextLabel</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>10</width>
+           <height>10</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </item>

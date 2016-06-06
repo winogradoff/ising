@@ -21,6 +21,7 @@ public:
     ~PlotWidget();
 
     void setGrid(Grid g);
+    void setParams(Grid grid);
     void updatePlots(double energy, double magnetization);
 
 protected:

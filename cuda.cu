@@ -494,6 +494,14 @@ void cudaInitGrid(Grid* g)
     kernelInitGrid<<<blocks, threads>>>(g->deviceMatrix, g->randomStates);
 }
 
+void cudaSetParams(Grid* g)
+{
+    cudaMemcpyToSymbol((const void*)&interactionEnergy, &(g->interactionEnergy), sizeof(int));
+    cudaMemcpyToSymbol((const void*)&externalField, &(g->externalField), sizeof(double));
+    cudaMemcpyToSymbol((const void*)&interactionRadius, &(g->interactionRadius), sizeof(int));
+    cudaMemcpyToSymbol((const void*)&temperature, &(g->temperature), sizeof(double));
+}
+
 void cudaFreeGrid(Grid* g)
 {
     if (g->randomStates != NULL)

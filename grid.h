@@ -26,6 +26,7 @@ struct Grid
 // CUDA functions
 void cudaInitGrid(Grid* g);
 void cudaFreeGrid(Grid* g);
+void cudaSetParams(Grid* g);
 void cudaAlgorithmStep(Grid* g, uint algorithmSteps);
 double cudaMagnetization(Grid* g);
 double cudaEnergy(Grid* g);

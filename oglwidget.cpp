@@ -22,6 +22,8 @@ OGLWidget::~OGLWidget()
 
 void OGLWidget::createVBO()
 {
+    this->deleteVBO();
+
     uint size = this->grid.xSize * this->grid.ySize * this->grid.zSize;
 
     // 8 реальных вершин на каждый куб
@@ -47,6 +49,9 @@ void OGLWidget::createVBO()
         &(this->cudaVertexResource), this->VertexVBOID, cudaGraphicsMapFlagsWriteDiscard);
     cudaGraphicsGLRegisterBuffer(
         &(this->cudaIndexResource), this->IndexVBOID, cudaGraphicsMapFlagsWriteDiscard);
+
+    cudaInitVBO(&(this->grid), &(this->cudaVertexResource), &(this->cudaIndexResource),
+        this->percentOfCube);
 }
 
 void OGLWidget::updateVBO()
@@ -216,10 +221,7 @@ void OGLWidget::drawFigure()
 {
     if (this->VertexVBOID == 0 && this->glInitialized)
     {
-        this->deleteVBO();
         this->createVBO();
-        cudaInitVBO(&(this->grid), &(this->cudaVertexResource), &(this->cudaIndexResource),
-            this->percentOfCube);
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, this->VertexVBOID);
@@ -238,17 +240,22 @@ void OGLWidget::drawFigure()
     glDisableClientState(GL_COLOR_ARRAY);
 }
 
-void OGLWidget::setGrid(Grid grid)
+void OGLWidget::setGrid(Grid g)
 {
-    this->grid = grid;
+    this->grid = g;
 
     if (this->glInitialized)
     {
-        this->deleteVBO();
         this->createVBO();
-        cudaInitVBO(&(this->grid), &(this->cudaVertexResource), &(this->cudaIndexResource),
-            this->percentOfCube);
     }
+}
+
+void OGLWidget::setParams(Grid g)
+{
+    this->grid.externalField = g.externalField;
+    this->grid.interactionEnergy = g.interactionEnergy;
+    this->grid.interactionRadius = g.interactionRadius;
+    this->grid.temperature = g.temperature;
 }
 
 void OGLWidget::setCubeSize(int value)
