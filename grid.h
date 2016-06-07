@@ -16,7 +16,7 @@ struct Grid
     int interactionEnergy; // энергия взаимодействия между спинами
     double externalField; // значение внешнего магнитного поля
     int interactionRadius; // радиус взаимодействия
-    long nonmagneticParticles; // количество немагнитных частиц
+    uint percentOfNonmagnetic; // количество немагнитных частиц
     double temperature; // температура
 
     curandState* randomStates; // состояния генераторов случайных чисел CUDA

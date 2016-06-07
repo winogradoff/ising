@@ -33,6 +33,7 @@ __constant__ double externalField;
 __constant__ int interactionRadius;
 __constant__ double temperature;
 __constant__ int percentOfCube;
+__constant__ int percentOfNonmagnetic;
 
 double* tempMatrix;
 
@@ -111,8 +112,16 @@ void kernelInitGrid(uchar* data, curandState* randomStates)
         {
             for (uint k = idz; k < zSize; k += offsetz)
             {
-                uchar value = curand_uniform(rndState) < 0.5 ? 0 : 2;
-                data[gridIndex(i, j, k)] = value;
+                uint index = gridIndex(i, j, k);
+                if (curand_uniform(rndState) < percentOfNonmagnetic / 100.0)
+                {
+                    data[index] = 1;
+                }
+                else
+                {
+                    uchar value = curand_uniform(rndState) < 0.5 ? 0 : 2;
+                    data[index] = value;
+                }
             }
         }
     }
@@ -162,8 +171,7 @@ void kernelAlgorithm(
                 spinValue = data[index] - 1;
 
                 // Пропустить, если немагнитная частица
-                if (spinValue == 0)
-                    continue;
+                if (spinValue == 0) continue;
 
                 gridSpinEnergy = externalField;
 
@@ -265,6 +273,12 @@ void kernelEnergy(uchar* data, double* result)
 
                 energy = 0.0;
                 spinValue = ((double)data[index]) - 1.0;
+
+                if (spinValue == 0)
+                {
+                    result[index] = 0;
+                    continue;
+                }
 
                 for (int x = i; x <= i + radiusX; x++)
                 {
@@ -469,6 +483,7 @@ void cudaInitGrid(Grid* g)
     cudaMemcpyToSymbol((const void*)&interactionRadius, &(g->interactionRadius), sizeof(int));
     cudaMemcpyToSymbol((const void*)&temperature, &(g->temperature), sizeof(double));
     cudaMemcpyToSymbol((const void*)&percentOfCube, &(g->percentOfCube), sizeof(int));
+    cudaMemcpyToSymbol((const void*)&percentOfNonmagnetic, &(g->percentOfNonmagnetic), sizeof(int));
 
     switch (g->dimension)
     {

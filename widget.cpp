@@ -139,7 +139,7 @@ void Widget::newGrid()
     this->grid.externalField = ui->externalField->value();
     this->grid.temperature = ui->temperature->value();
     this->grid.interactionRadius = ui->interactionRadius->value();
-    this->grid.nonmagneticParticles = ui->nonmagneticParticles->value();
+    this->grid.percentOfNonmagnetic = ui->nonmagneticParticles->value();
     this->grid.percentOfCube = ui->cubeSize->value();
     this->algorithmSteps = ui->algorithmSteps->value();
 
